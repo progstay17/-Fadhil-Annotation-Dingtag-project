@@ -4,24 +4,26 @@ import { useState, useCallback } from "react"
 import { TranscriptionCard } from "./transcription-card"
 import { StatusIndicator, StatusState } from "./status-indicator"
 import { Kbd } from "@/components/ui/kbd"
+import { useLanguage } from "./language-provider"
 
 export function TranscriptionForm() {
+  const { t } = useLanguage()
   const [input, setInput] = useState("")
   const [result, setResult] = useState("")
-  const [status, setStatus] = useState<{ state: StatusState; message: string }>({
+  const [status, setStatus] = useState<{ state: StatusState; messageKey: string }>({
     state: "idle",
-    message: "siap",
+    messageKey: "statusReady",
   })
   const [isProcessing, setIsProcessing] = useState(false)
 
   const process = useCallback(async () => {
     if (!input.trim()) {
-      setStatus({ state: "error", message: "input kosong" })
+      setStatus({ state: "error", messageKey: "statusEmptyInput" })
       return
     }
 
     setIsProcessing(true)
-    setStatus({ state: "loading", message: "memproses..." })
+    setStatus({ state: "loading", messageKey: "statusProcessing" })
     setResult("")
 
     try {
@@ -34,30 +36,30 @@ export function TranscriptionForm() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Terjadi kesalahan")
+        throw new Error(data.error || t("statusError"))
       }
 
       setResult(data.result)
-      setStatus({ state: "success", message: "selesai" })
+      setStatus({ state: "success", messageKey: "statusDone" })
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Terjadi kesalahan"
+      const message = error instanceof Error ? error.message : t("statusError")
       setResult("")
       // Truncate long error messages for display
       const displayMessage = message.length > 80 ? message.slice(0, 80) + "..." : message
-      setStatus({ state: "error", message: displayMessage })
+      setStatus({ state: "error", messageKey: displayMessage })
     } finally {
       setIsProcessing(false)
     }
-  }, [input])
+  }, [input, t])
 
   const copyToClipboard = useCallback(async () => {
     if (!result) return
     try {
       await navigator.clipboard.writeText(result)
-      setStatus({ state: "success", message: "tersalin ke clipboard" })
-      setTimeout(() => setStatus({ state: "idle", message: "siap" }), 2000)
+      setStatus({ state: "success", messageKey: "statusCopied" })
+      setTimeout(() => setStatus({ state: "idle", messageKey: "statusReady" }), 2000)
     } catch {
-      setStatus({ state: "error", message: "gagal menyalin" })
+      setStatus({ state: "error", messageKey: "statusCopyFailed" })
     }
   }, [result])
 
@@ -65,13 +67,13 @@ export function TranscriptionForm() {
     if (!result) return
     setInput(result)
     setResult("")
-    setStatus({ state: "idle", message: "teks dipindah ke input" })
+    setStatus({ state: "idle", messageKey: "statusMoved" })
   }, [result])
 
   const clearAll = useCallback(() => {
     setInput("")
     setResult("")
-    setStatus({ state: "idle", message: "siap" })
+    setStatus({ state: "idle", messageKey: "statusReady" })
   }, [])
 
   const handleKeyDown = useCallback(
@@ -87,10 +89,10 @@ export function TranscriptionForm() {
   return (
     <div className="w-full max-w-3xl flex flex-col gap-4">
       <TranscriptionCard
-        label="input"
+        label={t("inputLabel")}
         hint={
           <span>
-            gunakan <Kbd>\</Kbd> sebagai penanda jeda suara
+            {t("inputHint")} <Kbd>\</Kbd> {t("inputHintSuffix")}
           </span>
         }
       >
@@ -98,7 +100,7 @@ export function TranscriptionForm() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="mbaknya bilang akun dananya kena freeze\ lah gimana coba gue..."
+          placeholder={t("inputPlaceholder")}
           className="w-full bg-transparent border-none outline-none font-mono text-sm leading-relaxed text-foreground resize-none min-h-40 placeholder:text-muted-foreground"
         />
       </TranscriptionCard>
@@ -109,14 +111,14 @@ export function TranscriptionForm() {
           disabled={isProcessing}
           className="font-mono text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-md hover:bg-primary/90 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap"
         >
-          {isProcessing ? "Memproses..." : "Proses \u2192"}
+          {isProcessing ? t("processingButton") : `${t("processButton")} \u2192`}
         </button>
       </div>
 
       <div className="w-full h-px bg-border" />
 
       <TranscriptionCard
-        label="hasil"
+        label={t("outputLabel")}
         actions={
           result && (
             <>
@@ -124,19 +126,19 @@ export function TranscriptionForm() {
                 onClick={copyToClipboard}
                 className="font-mono text-[11px] bg-secondary text-muted-foreground border border-border px-3 py-1.5 rounded-md hover:text-foreground hover:border-muted-foreground transition-colors"
               >
-                salin
+                {t("copyButton")}
               </button>
               <button
                 onClick={moveToInput}
                 className="font-mono text-[11px] bg-secondary text-muted-foreground border border-border px-3 py-1.5 rounded-md hover:text-foreground hover:border-muted-foreground transition-colors"
               >
-                edit ulang
+                {t("editButton")}
               </button>
               <button
                 onClick={clearAll}
                 className="font-mono text-[11px] bg-secondary text-muted-foreground border border-border px-3 py-1.5 rounded-md hover:text-foreground hover:border-muted-foreground transition-colors"
               >
-                bersihkan
+                {t("clearButton")}
               </button>
             </>
           )
@@ -145,23 +147,23 @@ export function TranscriptionForm() {
         <div className="font-mono text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words min-h-14">
           {result || (
             <span className="text-muted-foreground">
-              hasil akan muncul di sini...
+              {t("outputPlaceholder")}
             </span>
           )}
         </div>
       </TranscriptionCard>
 
-      <StatusIndicator state={status.state} message={status.message} />
+      <StatusIndicator state={status.state} messageKey={status.messageKey} />
 
       <footer className="font-mono text-[11px] text-muted-foreground leading-relaxed mt-2">
         <p>
-          cara pakai: ketik transkripsi &rarr; tandai jeda suara dengan{" "}
+          {t("footerInstructions")}{" "}
           <span className="inline-block bg-secondary border border-border rounded px-1.5 text-primary">
             \
           </span>{" "}
-          &rarr; klik proses
+          {t("footerInstructionsSuffix")}
         </p>
-        <p>powered by Groq (Llama 3.3). gratis.</p>
+        <p>{t("footerPoweredBy")}</p>
       </footer>
     </div>
   )

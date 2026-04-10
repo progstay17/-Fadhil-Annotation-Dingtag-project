@@ -1,15 +1,24 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { useLanguage } from "./language-provider"
+import { TranslationKey, translations } from "@/lib/translations"
 
 export type StatusState = "idle" | "loading" | "success" | "error"
 
 interface StatusIndicatorProps {
   state: StatusState
-  message: string
+  messageKey: string
 }
 
-export function StatusIndicator({ state, message }: StatusIndicatorProps) {
+export function StatusIndicator({ state, messageKey }: StatusIndicatorProps) {
+  const { t, language } = useLanguage()
+  
+  // Check if messageKey is a valid translation key, otherwise use it as raw message
+  const message = messageKey in translations[language] 
+    ? t(messageKey as TranslationKey) 
+    : messageKey
+
   return (
     <div className="flex items-center gap-2 h-5">
       <div
