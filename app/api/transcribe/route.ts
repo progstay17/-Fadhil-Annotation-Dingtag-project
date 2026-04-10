@@ -23,6 +23,9 @@ Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
 Output: Aku lapar, mau makan. Kamu mau ikut?`
 
 export async function POST(request: Request) {
+  console.log("[v0] GROQ_API_KEY exists:", !!process.env.GROQ_API_KEY)
+  console.log("[v0] GROQ_API_KEY length:", process.env.GROQ_API_KEY?.length || 0)
+  
   try {
     const { text } = await request.json()
 
@@ -33,6 +36,8 @@ export async function POST(request: Request) {
       )
     }
 
+    console.log("[v0] Calling Groq API with text:", text.substring(0, 50))
+
     const { text: result } = await generateText({
       model: groq("llama-3.3-70b-versatile"),
       system: PROMPT_SYSTEM,
@@ -41,8 +46,10 @@ export async function POST(request: Request) {
       temperature: 0.1,
     })
 
+    console.log("[v0] Groq API response received")
     return Response.json({ result: result.trim() || "(tidak ada hasil)" })
   } catch (error) {
+    console.log("[v0] Error occurred:", error)
     const message = error instanceof Error ? error.message : "Terjadi kesalahan"
     return Response.json({ error: message }, { status: 500 })
   }
