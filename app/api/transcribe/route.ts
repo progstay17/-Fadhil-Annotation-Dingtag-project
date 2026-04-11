@@ -24,7 +24,7 @@ type Provider = "groq" | "google"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  google: "gemini-1.5-flash",
+  google: "gemini-2.0-flash",
 } as const
 
 export async function POST(request: Request) {
@@ -42,10 +42,10 @@ export async function POST(request: Request) {
     let model;
 
     if (provider === "google") {
-      const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
       if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
-        return Response.json({ error: "Google API Key belum dikonfigurasi." }, { status: 500 });
+        return Response.json({ error: "Gemini API Key (GEMINI_API_KEY) belum dikonfigurasi." }, { status: 500 });
       }
 
       const google = createGoogleGenerativeAI({ apiKey });
