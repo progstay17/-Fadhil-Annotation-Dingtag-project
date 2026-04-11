@@ -1,6 +1,7 @@
 import { generateText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
+import { calculateScoring } from "@/lib/scoring"
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
@@ -32,7 +33,7 @@ type Provider = "groq" | "openrouter"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  openrouter: "openrouter/auto",  // Auto-selects best available free model
+  openrouter: "meta-llama/llama-3.3-70b-instruct:free",
 } as const
 
 export async function POST(request: Request) {
@@ -43,6 +44,21 @@ export async function POST(request: Request) {
       return Response.json(
         { error: "Input teks diperlukan" },
         { status: 400 }
+      )
+    }
+
+    // Validate API Keys
+    if (provider === "openrouter" && !process.env.OPENROUTER_API_KEY) {
+      return Response.json(
+        { error: "OpenRouter API Key belum dikonfigurasi" },
+        { status: 500 }
+      )
+    }
+
+    if (provider === "groq" && !process.env.GROQ_API_KEY) {
+      return Response.json(
+        { error: "Groq API Key belum dikonfigurasi" },
+        { status: 500 }
       )
     }
 
@@ -59,7 +75,13 @@ export async function POST(request: Request) {
       temperature: 0.1,
     })
 
-    return Response.json({ result: result.trim() || "(tidak ada hasil)" })
+    const trimmedResult = result.trim() || "(tidak ada hasil)"
+    const scoring = calculateScoring(text, trimmedResult)
+
+    return Response.json({
+      result: trimmedResult,
+      scoring
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan"
     
