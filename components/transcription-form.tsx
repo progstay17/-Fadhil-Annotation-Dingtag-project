@@ -7,7 +7,7 @@ import { ScoringResult } from "@/lib/scoring"
 import { Kbd } from "@/components/ui/kbd"
 import { useLanguage } from "./language-provider"
 
-type Provider = "groq" | "openrouter"
+type Provider = "groq" | "google"
 
 export function TranscriptionForm() {
   const { t } = useLanguage()
@@ -15,7 +15,7 @@ export function TranscriptionForm() {
   const [result, setResult] = useState("")
   const [scoring, setScoring] = useState<ScoringResult | null>(null)
   const [showDiff, setShowDiff] = useState(false)
-  const [provider, setProvider] = useState<Provider>("groq")
+  const [provider, setProvider] = useState<Provider>("google")
   const [status, setStatus] = useState<{ state: StatusState; messageKey: string }>({
     state: "idle",
     messageKey: "statusReady",
@@ -123,8 +123,8 @@ export function TranscriptionForm() {
             disabled={isProcessing}
             className="font-mono text-xs bg-secondary text-foreground border border-border rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
+            <option value="google">{t("modelGoogle")}</option>
             <option value="groq">{t("modelGroq")}</option>
-            <option value="openrouter">{t("modelOpenRouter")}</option>
           </select>
         </div>
         <button

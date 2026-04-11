@@ -1,16 +1,7 @@
 import { generateText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
-import { createOpenAI } from "@ai-sdk/openai"
+import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { calculateScoring } from "@/lib/scoring"
-
-const groq = createGroq({
-  apiKey: process.env.GROQ_API_KEY,
-})
-
-const openrouter = createOpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: "https://openrouter.ai/api/v1",
-})
 
 const PROMPT_SYSTEM = `Kamu adalah editor transkripsi audio profesional.
 
@@ -29,16 +20,16 @@ CONTOH:
 Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
 Output: Aku lapar, mau makan. Kamu mau ikut?`
 
-type Provider = "groq" | "openrouter"
+type Provider = "groq" | "google"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  openrouter: "meta-llama/llama-3.3-70b-instruct:free",
+  google: "gemini-2.0-flash",
 } as const
 
 export async function POST(request: Request) {
   try {
-    const { text, provider = "groq" } = await request.json() as { text: string; provider?: Provider }
+    const { text, provider = "google" } = await request.json() as { text: string; provider?: Provider }
 
     if (!text || typeof text !== "string") {
       return Response.json(
@@ -47,25 +38,26 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate API Keys
-    if (provider === "openrouter" && !process.env.OPENROUTER_API_KEY) {
-      return Response.json(
-        { error: "OpenRouter API Key belum dikonfigurasi" },
-        { status: 500 }
-      )
-    }
+    // Initialize provider and model based on request
+    let model;
 
-    if (provider === "groq" && !process.env.GROQ_API_KEY) {
-      return Response.json(
-        { error: "Groq API Key belum dikonfigurasi" },
-        { status: 500 }
-      )
-    }
+    if (provider === "google") {
+      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-    // Select model based on provider
-    const model = provider === "openrouter" 
-      ? openrouter(MODELS.openrouter)
-      : groq(MODELS.groq)
+      if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
+        return Response.json({ error: "Gemini API Key (GEMINI_API_KEY) belum dikonfigurasi." }, { status: 500 });
+      }
+
+      const google = createGoogleGenerativeAI({ apiKey });
+      model = google(MODELS.google);
+    } else {
+      const apiKey = process.env.GROQ_API_KEY;
+      if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
+        return Response.json({ error: "Groq API Key belum dikonfigurasi." }, { status: 500 });
+      }
+      const groq = createGroq({ apiKey });
+      model = groq(MODELS.groq);
+    }
 
     const { text: result } = await generateText({
       model,
