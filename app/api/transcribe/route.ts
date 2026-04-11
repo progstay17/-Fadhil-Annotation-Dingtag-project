@@ -1,6 +1,8 @@
 import { generateText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
+import { createGoogleGenerativeAI } from "@ai-sdk/google"
+import { calculateScoring } from "@/lib/scoring"
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
@@ -9,6 +11,10 @@ const groq = createGroq({
 const openrouter = createOpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
+})
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 })
 
 const PROMPT_SYSTEM = `Kamu adalah editor transkripsi audio profesional.
@@ -28,11 +34,12 @@ CONTOH:
 Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
 Output: Aku lapar, mau makan. Kamu mau ikut?`
 
-type Provider = "groq" | "openrouter"
+type Provider = "groq" | "openrouter" | "google"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  openrouter: "openrouter/auto",  // Auto-selects best available free model
+  openrouter: "meta-llama/llama-3.3-70b-instruct:free",
+  google: "gemini-1.5-flash",
 } as const
 
 export async function POST(request: Request) {
@@ -46,9 +53,33 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validate API Keys
+    if (provider === "openrouter" && !process.env.OPENROUTER_API_KEY) {
+      return Response.json(
+        { error: "OpenRouter API Key belum dikonfigurasi" },
+        { status: 500 }
+      )
+    }
+
+    if (provider === "google" && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      return Response.json(
+        { error: "Google API Key belum dikonfigurasi" },
+        { status: 500 }
+      )
+    }
+
+    if (provider === "groq" && !process.env.GROQ_API_KEY) {
+      return Response.json(
+        { error: "Groq API Key belum dikonfigurasi" },
+        { status: 500 }
+      )
+    }
+
     // Select model based on provider
     const model = provider === "openrouter" 
       ? openrouter(MODELS.openrouter)
+      : provider === "google"
+      ? google(MODELS.google)
       : groq(MODELS.groq)
 
     const { text: result } = await generateText({
@@ -59,7 +90,13 @@ export async function POST(request: Request) {
       temperature: 0.1,
     })
 
-    return Response.json({ result: result.trim() || "(tidak ada hasil)" })
+    const trimmedResult = result.trim() || "(tidak ada hasil)"
+    const scoring = calculateScoring(text, trimmedResult)
+
+    return Response.json({
+      result: trimmedResult,
+      scoring
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan"
     
