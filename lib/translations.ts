@@ -31,10 +31,15 @@ export const translations = {
     statusCopyFailed: "gagal menyalin",
     statusError: "Terjadi kesalahan",
     
+    // Model selector
+    modelLabel: "model",
+    modelGroq: "Groq (Llama 3.3)",
+    modelOpenRouter: "OpenRouter (Llama 3.3 Free)",
+    
     // Footer
     footerInstructions: "cara pakai: ketik transkripsi → tandai jeda suara dengan",
     footerInstructionsSuffix: "→ klik proses",
-    footerPoweredBy: "powered by Groq (Llama 3.3). gratis.",
+    footerPoweredBy: "gratis. ganti model jika limit.",
   },
   en: {
     // Header
@@ -66,10 +71,15 @@ export const translations = {
     statusCopyFailed: "failed to copy",
     statusError: "An error occurred",
     
+    // Model selector
+    modelLabel: "model",
+    modelGroq: "Groq (Llama 3.3)",
+    modelOpenRouter: "OpenRouter (Llama 3.3 Free)",
+    
     // Footer
     footerInstructions: "how to use: type transcription → mark pauses with",
     footerInstructionsSuffix: "→ click process",
-    footerPoweredBy: "powered by Groq (Llama 3.3). free.",
+    footerPoweredBy: "free. switch model if limited.",
   },
   zh: {
     // Header
@@ -101,10 +111,15 @@ export const translations = {
     statusCopyFailed: "复制失败",
     statusError: "发生错误",
     
+    // Model selector
+    modelLabel: "模型",
+    modelGroq: "Groq (Llama 3.3)",
+    modelOpenRouter: "OpenRouter (Llama 3.3 免费)",
+    
     // Footer
     footerInstructions: "使用方法：输入转录内容 → 用",
     footerInstructionsSuffix: "标记停顿 → 点击处理",
-    footerPoweredBy: "由 Groq (Llama 3.3) 驱动。免费。",
+    footerPoweredBy: "免费。限制时请切换模型。",
   },
 } as const
 

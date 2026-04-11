@@ -1,8 +1,14 @@
 import { generateText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
+import { createOpenAI } from "@ai-sdk/openai"
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
+})
+
+const openrouter = createOpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
 })
 
 const PROMPT_SYSTEM = `Kamu adalah editor transkripsi audio profesional.
@@ -22,9 +28,16 @@ CONTOH:
 Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
 Output: Aku lapar, mau makan. Kamu mau ikut?`
 
+type Provider = "groq" | "openrouter"
+
+const MODELS = {
+  groq: "llama-3.3-70b-versatile",
+  openrouter: "meta-llama/llama-3.3-70b-instruct:free",
+} as const
+
 export async function POST(request: Request) {
   try {
-    const { text } = await request.json()
+    const { text, provider = "groq" } = await request.json() as { text: string; provider?: Provider }
 
     if (!text || typeof text !== "string") {
       return Response.json(
@@ -33,8 +46,13 @@ export async function POST(request: Request) {
       )
     }
 
+    // Select model based on provider
+    const model = provider === "openrouter" 
+      ? openrouter(MODELS.openrouter)
+      : groq(MODELS.groq)
+
     const { text: result } = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
+      model,
       system: PROMPT_SYSTEM,
       prompt: text,
       maxOutputTokens: 1000,
@@ -48,7 +66,7 @@ export async function POST(request: Request) {
     // Check for rate limit error
     if (message.toLowerCase().includes("rate limit") || message.includes("429")) {
       return Response.json({ 
-        error: "Rate limit tercapai. Tunggu beberapa menit lalu coba lagi.",
+        error: "Rate limit tercapai. Coba ganti model atau tunggu beberapa menit.",
         isRateLimit: true 
       }, { status: 429 })
     }
