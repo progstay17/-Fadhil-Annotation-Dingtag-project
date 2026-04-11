@@ -15,7 +15,7 @@ export function TranscriptionForm() {
   const [result, setResult] = useState("")
   const [scoring, setScoring] = useState<ScoringResult | null>(null)
   const [showDiff, setShowDiff] = useState(false)
-  const [provider, setProvider] = useState<Provider>("groq")
+  const [provider, setProvider] = useState<Provider>("openrouter")
   const [status, setStatus] = useState<{ state: StatusState; messageKey: string }>({
     state: "idle",
     messageKey: "statusReady",

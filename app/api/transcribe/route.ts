@@ -54,23 +54,18 @@ export async function POST(request: Request) {
     }
 
     // Validate API Keys
-    if (provider === "openrouter" && !process.env.OPENROUTER_API_KEY) {
-      return Response.json(
-        { error: "OpenRouter API Key belum dikonfigurasi" },
-        { status: 500 }
-      )
-    }
+    const apiKey = provider === "openrouter" ? process.env.OPENROUTER_API_KEY
+                 : provider === "google" ? process.env.GOOGLE_GENERATIVE_AI_API_KEY
+                 : process.env.GROQ_API_KEY
 
-    if (provider === "google" && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
+      const providerNames = {
+        openrouter: "OpenRouter",
+        google: "Google Gemini",
+        groq: "Groq"
+      }
       return Response.json(
-        { error: "Google API Key belum dikonfigurasi" },
-        { status: 500 }
-      )
-    }
-
-    if (provider === "groq" && !process.env.GROQ_API_KEY) {
-      return Response.json(
-        { error: "Groq API Key belum dikonfigurasi" },
+        { error: `API Key untuk ${providerNames[provider]} belum dikonfigurasi atau masih menggunakan placeholder.` },
         { status: 500 }
       )
     }
