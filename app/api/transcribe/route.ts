@@ -32,7 +32,7 @@ type Provider = "groq" | "openrouter"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  openrouter: "openrouter/auto",  // Auto-selects best available free model
+  openrouter: "meta-llama/llama-3.3-70b-instruct:free",
 } as const
 
 export async function POST(request: Request) {
@@ -43,6 +43,21 @@ export async function POST(request: Request) {
       return Response.json(
         { error: "Input teks diperlukan" },
         { status: 400 }
+      )
+    }
+
+    // Validate API Keys
+    if (provider === "openrouter" && !process.env.OPENROUTER_API_KEY) {
+      return Response.json(
+        { error: "OpenRouter API Key belum dikonfigurasi" },
+        { status: 500 }
+      )
+    }
+
+    if (provider === "groq" && !process.env.GROQ_API_KEY) {
+      return Response.json(
+        { error: "Groq API Key belum dikonfigurasi" },
+        { status: 500 }
       )
     }
 
