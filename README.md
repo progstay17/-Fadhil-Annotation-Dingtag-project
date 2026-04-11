@@ -51,10 +51,11 @@ After deployment, you need to add the API Keys (Google Gemini and/or Groq):
 
 **Get API Keys / 获取API密钥：**
 1. **Google Gemini:** Go to [aistudio.google.com](https://aistudio.google.com/) (Recommended: Free & Fast)
-2. **Groq:** Go to [console.groq.com](https://console.groq.com)
-3. Create a new API Key in each respective dashboard and copy it.
+2. **AIML API:** Go to [aimlapi.com](https://aimlapi.com/)
+3. **Groq:** Go to [console.groq.com](https://console.groq.com)
+4. Create a new API Key in each respective dashboard and copy it.
 
-   访问 [aistudio.google.com](https://aistudio.google.com/) 或 [console.groq.com](https://console.groq.com) 创建并复制新的API密钥 (推荐使用 Gemini)。
+   访问 [aistudio.google.com](https://aistudio.google.com/), [aimlapi.com](https://aimlapi.com/) 或 [console.groq.com](https://console.groq.com) 创建并复制新的API密钥 (推荐使用 Gemini)。
 
 **Add to Vercel / 添加到Vercel：**
 
