@@ -1,6 +1,7 @@
 import { generateText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
+import { calculateScoring } from "@/lib/scoring"
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
@@ -74,7 +75,13 @@ export async function POST(request: Request) {
       temperature: 0.1,
     })
 
-    return Response.json({ result: result.trim() || "(tidak ada hasil)" })
+    const trimmedResult = result.trim() || "(tidak ada hasil)"
+    const scoring = calculateScoring(text, trimmedResult)
+
+    return Response.json({
+      result: trimmedResult,
+      scoring
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan"
     

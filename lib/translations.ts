@@ -31,6 +31,13 @@ export const translations = {
     statusCopyFailed: "gagal menyalin",
     statusError: "Terjadi kesalahan",
     
+    // Scoring
+    accuracyScore: "Skor Akurasi",
+    showDiff: "Lihat Detail Perbedaan",
+    perfectScore: "Sempurna!",
+    goodScore: "Bagus, periksa sedikit.",
+    lowScore: "Banyak ketidaksesuaian.",
+
     // Model selector
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
@@ -71,6 +78,13 @@ export const translations = {
     statusCopyFailed: "failed to copy",
     statusError: "An error occurred",
     
+    // Scoring
+    accuracyScore: "Accuracy Score",
+    showDiff: "Show Diff Details",
+    perfectScore: "Perfect!",
+    goodScore: "Good, check slightly.",
+    lowScore: "Many inconsistencies.",
+
     // Model selector
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
@@ -111,6 +125,13 @@ export const translations = {
     statusCopyFailed: "复制失败",
     statusError: "发生错误",
     
+    // Scoring
+    accuracyScore: "准确率得分",
+    showDiff: "显示差异细节",
+    perfectScore: "完美！",
+    goodScore: "不错，稍作检查。",
+    lowScore: "存在较多不一致。",
+
     // Model selector
     modelLabel: "模型",
     modelGroq: "Groq (Llama 3.3)",
