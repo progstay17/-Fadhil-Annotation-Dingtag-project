@@ -7,7 +7,7 @@ import { ScoringResult } from "@/lib/scoring"
 import { Kbd } from "@/components/ui/kbd"
 import { useLanguage } from "./language-provider"
 
-type Provider = "groq" | "google"
+type Provider = "groq" | "google" | "aimlapi"
 
 export function TranscriptionForm() {
   const { t } = useLanguage()
@@ -125,6 +125,7 @@ export function TranscriptionForm() {
           >
             <option value="google">{t("modelGoogle")}</option>
             <option value="groq">{t("modelGroq")}</option>
+            <option value="aimlapi">{t("modelAIML")}</option>
           </select>
         </div>
         <button
