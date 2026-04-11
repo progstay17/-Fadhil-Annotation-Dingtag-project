@@ -31,10 +31,17 @@ export const translations = {
     statusCopyFailed: "gagal menyalin",
     statusError: "Terjadi kesalahan",
     
+    // Model selector
+    modelLabel: "model",
+    modelGroq: "Groq (Llama 3.3)",
+    modelOpenAI: "OpenAI (GPT-4o Mini)",
+    modelAnthropic: "Anthropic (Claude 3.5)",
+    modelGoogle: "Google (Gemini 2.0)",
+    
     // Footer
     footerInstructions: "cara pakai: ketik transkripsi → tandai jeda suara dengan",
     footerInstructionsSuffix: "→ klik proses",
-    footerPoweredBy: "powered by Groq (Llama 3.3). gratis.",
+    footerPoweredBy: "gratis & tanpa limit.",
   },
   en: {
     // Header
@@ -66,10 +73,17 @@ export const translations = {
     statusCopyFailed: "failed to copy",
     statusError: "An error occurred",
     
+    // Model selector
+    modelLabel: "model",
+    modelGroq: "Groq (Llama 3.3)",
+    modelOpenAI: "OpenAI (GPT-4o Mini)",
+    modelAnthropic: "Anthropic (Claude 3.5)",
+    modelGoogle: "Google (Gemini 2.0)",
+    
     // Footer
     footerInstructions: "how to use: type transcription → mark pauses with",
     footerInstructionsSuffix: "→ click process",
-    footerPoweredBy: "powered by Groq (Llama 3.3). free.",
+    footerPoweredBy: "free & no limit.",
   },
   zh: {
     // Header
@@ -101,10 +115,17 @@ export const translations = {
     statusCopyFailed: "复制失败",
     statusError: "发生错误",
     
+    // Model selector
+    modelLabel: "模型",
+    modelGroq: "Groq (Llama 3.3)",
+    modelOpenAI: "OpenAI (GPT-4o Mini)",
+    modelAnthropic: "Anthropic (Claude 3.5)",
+    modelGoogle: "Google (Gemini 2.0)",
+    
     // Footer
     footerInstructions: "使用方法：输入转录内容 → 用",
     footerInstructionsSuffix: "标记停顿 → 点击处理",
-    footerPoweredBy: "由 Groq (Llama 3.3) 驱动。免费。",
+    footerPoweredBy: "免费且无限制。",
   },
 } as const
 

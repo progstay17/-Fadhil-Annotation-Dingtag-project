@@ -22,9 +22,18 @@ CONTOH:
 Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
 Output: Aku lapar, mau makan. Kamu mau ikut?`
 
+type ModelProvider = "groq" | "openai" | "anthropic" | "google"
+
+const MODEL_MAP: Record<ModelProvider, string> = {
+  groq: "llama-3.3-70b-versatile",
+  openai: "openai/gpt-4o-mini",
+  anthropic: "anthropic/claude-3-5-haiku-latest",
+  google: "google/gemini-2.0-flash",
+}
+
 export async function POST(request: Request) {
   try {
-    const { text } = await request.json()
+    const { text, provider = "groq" } = await request.json()
 
     if (!text || typeof text !== "string") {
       return Response.json(
@@ -33,8 +42,15 @@ export async function POST(request: Request) {
       )
     }
 
+    const modelProvider = provider as ModelProvider
+    
+    // Use Groq SDK for groq provider, otherwise use Vercel AI Gateway
+    const model = modelProvider === "groq" 
+      ? groq(MODEL_MAP.groq)
+      : MODEL_MAP[modelProvider] || MODEL_MAP.openai
+
     const { text: result } = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
+      model,
       system: PROMPT_SYSTEM,
       prompt: text,
       maxOutputTokens: 1000,
