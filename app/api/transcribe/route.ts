@@ -1,6 +1,5 @@
 import { generateText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
-import { createOpenAI } from "@ai-sdk/openai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { calculateScoring } from "@/lib/scoring"
 
@@ -21,17 +20,16 @@ CONTOH:
 Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
 Output: Aku lapar, mau makan. Kamu mau ikut?`
 
-type Provider = "groq" | "openrouter" | "google"
+type Provider = "groq" | "google"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  openrouter: "meta-llama/llama-3.3-70b-instruct:free",
   google: "gemini-1.5-flash",
 } as const
 
 export async function POST(request: Request) {
   try {
-    const { text, provider = "openrouter" } = await request.json() as { text: string; provider?: Provider }
+    const { text, provider = "google" } = await request.json() as { text: string; provider?: Provider }
 
     if (!text || typeof text !== "string") {
       return Response.json(
@@ -45,21 +43,13 @@ export async function POST(request: Request) {
 
     if (provider === "google") {
       const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+
       if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
         return Response.json({ error: "Google API Key belum dikonfigurasi." }, { status: 500 });
       }
+
       const google = createGoogleGenerativeAI({ apiKey });
       model = google(MODELS.google);
-    } else if (provider === "openrouter") {
-      const apiKey = process.env.OPENROUTER_API_KEY;
-      if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
-        return Response.json({ error: "OpenRouter API Key belum dikonfigurasi." }, { status: 500 });
-      }
-      const openrouter = createOpenAI({
-        apiKey,
-        baseURL: "https://openrouter.ai/api/v1",
-      });
-      model = openrouter(MODELS.openrouter);
     } else {
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {

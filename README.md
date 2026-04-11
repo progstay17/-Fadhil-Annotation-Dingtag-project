@@ -45,17 +45,16 @@ cd -Fadhil-Annotation-Dingtag-project
 
 ### Step 3: Setup API Keys / 第三步：设置API密钥
 
-After deployment, you need to add the API Keys (Groq and/or OpenRouter):
+After deployment, you need to add the API Keys (Google Gemini and/or Groq):
 
-部署完成后，您需要添加API密钥（Groq 和/或 OpenRouter）：
+部署完成后，您需要添加API密钥（Google Gemini 和/或 Groq）：
 
 **Get API Keys / 获取API密钥：**
 1. **Google Gemini:** Go to [aistudio.google.com](https://aistudio.google.com/) (Recommended: Free & Fast)
 2. **Groq:** Go to [console.groq.com](https://console.groq.com)
-3. **OpenRouter:** Go to [openrouter.ai](https://openrouter.ai/keys)
-4. Create a new API Key in each respective dashboard and copy it.
+3. Create a new API Key in each respective dashboard and copy it.
 
-   访问 [aistudio.google.com](https://aistudio.google.com/), [console.groq.com](https://console.groq.com) 或 [openrouter.ai](https://openrouter.ai/keys) 创建并复制新的API密钥。
+   访问 [aistudio.google.com](https://aistudio.google.com/) 或 [console.groq.com](https://console.groq.com) 创建并复制新的API密钥 (推荐使用 Gemini)。
 
 **Add to Vercel / 添加到Vercel：**
 
@@ -64,7 +63,6 @@ After deployment, you need to add the API Keys (Groq and/or OpenRouter):
 3. Add the following variables / 添加以下变量：
    - **Key:** `GOOGLE_GENERATIVE_AI_API_KEY` | **Value:** (your Gemini key)
    - **Key:** `GROQ_API_KEY` | **Value:** (your Groq key)
-   - **Key:** `OPENROUTER_API_KEY` | **Value:** (your OpenRouter key)
 4. Click **"Save"** for each / 为每个变量点击 **"Save"**
 5. **Redeploy** the project to activate the environment variable / **重新部署**项目以激活环境变量：
    - Go to the **Deployments** tab / 进入 **Deployments** 标签
@@ -137,7 +135,6 @@ pnpm install
 # Add keys for the providers you want to use
 echo "GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_key_here" > .env.local
 echo "GROQ_API_KEY=your_groq_key_here" >> .env.local
-echo "OPENROUTER_API_KEY=your_openrouter_key_here" >> .env.local
 
 # Run development server / 运行开发服务器
 pnpm dev
@@ -153,9 +150,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 | Variable | Description / 描述 | Required / 必需 |
 |----------|-------------------|-----------------|
-| `GOOGLE_GENERATIVE_AI_API_KEY` | API Key from aistudio.google.com / 来自aistudio.google.com的API密钥 | Yes / 是 (Alternative) |
-| `GROQ_API_KEY` | API Key from console.groq.com / 来自console.groq.coms的API密钥 | Yes / 是 (Primary) |
-| `OPENROUTER_API_KEY` | API Key from openrouter.ai / 来自openrouter.ai的API密钥 | No / 否 (Optional) |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | API Key from aistudio.google.com / 来自aistudio.google.com Baku | Yes / 是 (Recommended) |
+| `GROQ_API_KEY` | API Key from console.groq.coms / 来自console.groq.coms的API密钥 | No / 否 (Alternative) |
 
 ---
 
@@ -163,17 +159,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Error: "API key is missing" / 错误："API密钥缺失"
 
-1. Make sure `GOOGLE_GENERATIVE_AI_API_KEY`, `GROQ_API_KEY` or `OPENROUTER_API_KEY` is added in Environment Variables.
+1. Make sure `GOOGLE_GENERATIVE_AI_API_KEY` or `GROQ_API_KEY` is added in Environment Variables.
    
-   确保已在环境变量中添加 `GOOGLE_GENERATIVE_AI_API_KEY`, `GROQ_API_KEY` 或 `OPENROUTER_API_KEY`。
+   确保已在环境变量中添加 `GOOGLE_GENERATIVE_AI_API_KEY` 或 `GROQ_API_KEY`。
 
 2. Make sure you redeploy after adding the environment variable.
    
-   确保添加环境变量后重新部署。
+   确保添加环境变量后重新部署.
 
-3. Check if the API Key is valid at [aistudio.google.com](https://aistudio.google.com), [console.groq.com](https://console.groq.com) or [openrouter.ai](https://openrouter.ai).
+3. Check if the API Key is valid at [aistudio.google.com](https://aistudio.google.com) or [console.groq.com](https://console.groq.com).
    
-   在 [aistudio.google.com](https://aistudio.google.com), [console.groq.com](https://console.groq.com) 或 [openrouter.ai](https://openrouter.ai) 检查API密钥是否有效。
+   在 [aistudio.google.com](https://aistudio.google.com) 或 [console.groq.com](https://console.groq.com) 检查API密钥是否有效.
 
 ### Error 500 when transcribing / 转录时出现错误500
 
