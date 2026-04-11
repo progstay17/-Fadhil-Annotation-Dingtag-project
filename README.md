@@ -63,7 +63,6 @@ After deployment, you need to add the API Keys (Google Gemini and/or Groq):
 2. Go to **Settings** > **Environment Variables** / 进入 **Settings** > **Environment Variables**
 3. Add the following variables / 添加以下变量：
    - **Key:** `GEMINI_API_KEY` | **Value:** (your Gemini key)
-   - **Key:** `AIML_API_KEY` | **Value:** (your AIML key)
    - **Key:** `GROQ_API_KEY` | **Value:** (your Groq key)
 4. Click **"Save"** for each / 为每个变量点击 **"Save"**
 5. **Redeploy** the project to activate the environment variable / **重新部署**项目以激活环境变量：
@@ -136,7 +135,6 @@ pnpm install
 # Create .env.local file / 创建.env.local文件
 # Add keys for the providers you want to use
 echo "GEMINI_API_KEY=your_gemini_key_here" > .env.local
-echo "AIML_API_KEY=your_aiml_key_here" >> .env.local
 echo "GROQ_API_KEY=your_groq_key_here" >> .env.local
 
 # Run development server / 运行开发服务器
@@ -154,8 +152,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | Variable | Description / 描述 | Required / 必需 |
 |----------|-------------------|-----------------|
 | `GEMINI_API_KEY` | API Key from aistudio.google.com / 来自aistudio.google.com | Yes / 是 (Recommended) |
-| `AIML_API_KEY` | API Key from aimlapi.com / 来自aimlapi.com 的 API 密钥 | No / 否 (Alternative) |
-| `GROQ_API_KEY` | API Key from console.groq.com / 来自console.groq.com 的 API 密钥 | No / 否 (Alternative) |
+| `GROQ_API_KEY` | API Key from console.groq.coms / 来自console.groq.coms的API密钥 | No / 否 (Alternative) |
 
 ---
 
@@ -163,17 +160,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Error: "API key is missing" / 错误："API密钥缺失"
 
-1. Make sure `GEMINI_API_KEY`, `AIML_API_KEY` or `GROQ_API_KEY` is added in Environment Variables.
+1. Make sure `GEMINI_API_KEY` or `GROQ_API_KEY` is added in Environment Variables.
    
-   确保已在环境变量中添加 `GEMINI_API_KEY`, `AIML_API_KEY` 或 `GROQ_API_KEY`。
+   确保已在环境变量中添加 `GEMINI_API_KEY` 或 `GROQ_API_KEY`。
 
 2. Make sure you redeploy after adding the environment variable.
    
    确保添加环境变量后重新部署.
 
-3. Check if the API Key is valid at [aistudio.google.com](https://aistudio.google.com), [aimlapi.com](https://aimlapi.com) or [console.groq.com](https://console.groq.com).
+3. Check if the API Key is valid at [aistudio.google.com](https://aistudio.google.com) or [console.groq.com](https://console.groq.com).
    
-   在 [aistudio.google.com](https://aistudio.google.com), [aimlapi.com](https://aimlapi.com) 或 [console.groq.com](https://console.groq.com) 检查API密钥是否有效.
+   在 [aistudio.google.com](https://aistudio.google.com) 或 [console.groq.com](https://console.groq.com) 检查API密钥是否有效.
 
 ### Error 500 when transcribing / 转录时出现错误500
 

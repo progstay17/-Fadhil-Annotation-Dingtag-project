@@ -1,6 +1,5 @@
 import { generateText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
-import { createOpenAI } from "@ai-sdk/openai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { calculateScoring } from "@/lib/scoring"
 
@@ -21,12 +20,11 @@ CONTOH:
 Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
 Output: Aku lapar, mau makan. Kamu mau ikut?`
 
-type Provider = "groq" | "google" | "aimlapi"
+type Provider = "groq" | "google"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  google: "gemini-2.5-flash-lite",
-  aimlapi: "google/gemma-3-4b-it",
+  google: "gemini-2.0-flash",
 } as const
 
 export async function POST(request: Request) {
@@ -52,16 +50,6 @@ export async function POST(request: Request) {
 
       const google = createGoogleGenerativeAI({ apiKey });
       model = google(MODELS.google);
-    } else if (provider === "aimlapi") {
-      const apiKey = process.env.AIML_API_KEY;
-      if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
-        return Response.json({ error: "AIML API Key belum dikonfigurasi." }, { status: 500 });
-      }
-      const aiml = createOpenAI({
-        apiKey,
-        baseURL: "https://api.aimlapi.com/v1",
-      });
-      model = aiml(MODELS.aimlapi);
     } else {
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {

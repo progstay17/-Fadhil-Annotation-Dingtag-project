@@ -41,8 +41,7 @@ export const translations = {
     // Model selector
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
-    modelGoogle: "Google Gemini 2.5 (Fast & Stable)",
-    modelAIML: "AIML API (Gemma 3 4B)",
+    modelGoogle: "Google Gemini (Gratis & Cepat)",
     
     // Footer
     footerInstructions: "cara pakai: ketik transkripsi → tandai jeda suara dengan",
@@ -89,8 +88,7 @@ export const translations = {
     // Model selector
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
-    modelGoogle: "Google Gemini 2.5 (Fast & Stable)",
-    modelAIML: "AIML API (Gemma 3 4B)",
+    modelGoogle: "Google Gemini (Free & Fast)",
     
     // Footer
     footerInstructions: "how to use: type transcription → mark pauses with",
@@ -137,8 +135,7 @@ export const translations = {
     // Model selector
     modelLabel: "模型",
     modelGroq: "Groq (Llama 3.3)",
-    modelGoogle: "Google Gemini 2.5 (快速且稳定)",
-    modelAIML: "AIML API (Gemma 3 4B)",
+    modelGoogle: "Google Gemini (免费且快速)",
     
     // Footer
     footerInstructions: "使用方法：输入转录内容 → 用",
