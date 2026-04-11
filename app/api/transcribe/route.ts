@@ -32,7 +32,7 @@ type Provider = "groq" | "openrouter"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  openrouter: "meta-llama/llama-3.3-70b-instruct:free",
+  openrouter: "openrouter/auto",  // Auto-selects best available free model
 } as const
 
 export async function POST(request: Request) {
