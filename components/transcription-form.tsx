@@ -3,16 +3,19 @@
 import { useState, useCallback } from "react"
 import { TranscriptionCard } from "./transcription-card"
 import { StatusIndicator, StatusState } from "./status-indicator"
+import { ScoringResult } from "@/lib/scoring"
 import { Kbd } from "@/components/ui/kbd"
 import { useLanguage } from "./language-provider"
 
-type Provider = "groq" | "openrouter"
+type Provider = "groq" | "google"
 
 export function TranscriptionForm() {
   const { t } = useLanguage()
   const [input, setInput] = useState("")
   const [result, setResult] = useState("")
-  const [provider, setProvider] = useState<Provider>("groq")
+  const [scoring, setScoring] = useState<ScoringResult | null>(null)
+  const [showDiff, setShowDiff] = useState(false)
+  const [provider, setProvider] = useState<Provider>("google")
   const [status, setStatus] = useState<{ state: StatusState; messageKey: string }>({
     state: "idle",
     messageKey: "statusReady",
@@ -43,6 +46,7 @@ export function TranscriptionForm() {
       }
 
       setResult(data.result)
+      setScoring(data.scoring)
       setStatus({ state: "success", messageKey: "statusDone" })
     } catch (error) {
       const message = error instanceof Error ? error.message : t("statusError")
@@ -76,6 +80,8 @@ export function TranscriptionForm() {
   const clearAll = useCallback(() => {
     setInput("")
     setResult("")
+    setScoring(null)
+    setShowDiff(false)
     setStatus({ state: "idle", messageKey: "statusReady" })
   }, [])
 
@@ -117,8 +123,8 @@ export function TranscriptionForm() {
             disabled={isProcessing}
             className="font-mono text-xs bg-secondary text-foreground border border-border rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
+            <option value="google">{t("modelGoogle")}</option>
             <option value="groq">{t("modelGroq")}</option>
-            <option value="openrouter">{t("modelOpenRouter")}</option>
           </select>
         </div>
         <button
@@ -137,6 +143,18 @@ export function TranscriptionForm() {
         actions={
           result && (
             <>
+              {scoring && (
+                <button
+                  onClick={() => setShowDiff(!showDiff)}
+                  className={`font-mono text-[11px] border px-3 py-1.5 rounded-md transition-colors ${
+                    showDiff
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-secondary text-muted-foreground border-border hover:text-foreground"
+                  }`}
+                >
+                  {t("showDiff")}
+                </button>
+              )}
               <button
                 onClick={copyToClipboard}
                 className="font-mono text-[11px] bg-secondary text-muted-foreground border border-border px-3 py-1.5 rounded-md hover:text-foreground hover:border-muted-foreground transition-colors"
@@ -160,13 +178,64 @@ export function TranscriptionForm() {
         }
       >
         <div className="font-mono text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words min-h-14">
-          {result || (
+          {result ? (
+            showDiff && scoring ? (
+              <div className="flex flex-wrap gap-x-1 gap-y-1">
+                {scoring.highlights.map((seg, i) => (
+                  <span
+                    key={i}
+                    className={
+                      seg.type === "correct" ? "bg-green-500/20 text-green-600 px-0.5 rounded" :
+                      seg.type === "added" ? "bg-blue-500/20 text-blue-600 px-0.5 rounded border border-blue-500/30" :
+                      seg.type === "missing" ? "bg-red-500/20 text-red-600 px-0.5 rounded italic border border-dashed border-red-500/50" :
+                      seg.type === "changed" ? "bg-yellow-500/20 text-yellow-600 px-0.5 rounded" :
+                      ""
+                    }
+                  >
+                    {seg.text}
+                  </span>
+                ))}
+              </div>
+            ) : result
+          ) : (
             <span className="text-muted-foreground">
               {t("outputPlaceholder")}
             </span>
           )}
         </div>
       </TranscriptionCard>
+
+      {scoring && (
+        <div className="bg-secondary/30 border border-border rounded-lg p-4 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              {t("accuracyScore")}
+            </span>
+            <span className={`font-mono text-lg font-bold ${
+              scoring.score > 90 ? "text-green-500" :
+              scoring.score > 70 ? "text-yellow-500" :
+              "text-red-500"
+            }`}>
+              {scoring.score}%
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-1000 ${
+                scoring.score > 90 ? "bg-green-500" :
+                scoring.score > 70 ? "bg-yellow-500" :
+                "bg-red-500"
+              }`}
+              style={{ width: `${scoring.score}%` }}
+            />
+          </div>
+          <p className="font-mono text-[11px] text-muted-foreground italic">
+            {scoring.score > 90 ? t("perfectScore") :
+             scoring.score > 70 ? t("goodScore") :
+             t("lowScore")}
+          </p>
+        </div>
+      )}
 
       <StatusIndicator state={status.state} messageKey={status.messageKey} />
 

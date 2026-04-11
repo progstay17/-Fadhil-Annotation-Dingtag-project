@@ -1,15 +1,7 @@
 import { generateText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
-import { createOpenAI } from "@ai-sdk/openai"
-
-const groq = createGroq({
-  apiKey: process.env.GROQ_API_KEY,
-})
-
-const openrouter = createOpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: "https://openrouter.ai/api/v1",
-})
+import { createGoogleGenerativeAI } from "@ai-sdk/google"
+import { calculateScoring } from "@/lib/scoring"
 
 const PROMPT_SYSTEM = `Kamu adalah editor transkripsi audio profesional.
 
@@ -28,16 +20,16 @@ CONTOH:
 Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
 Output: Aku lapar, mau makan. Kamu mau ikut?`
 
-type Provider = "groq" | "openrouter"
+type Provider = "groq" | "google"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  openrouter: "openrouter/auto",  // Auto-selects best available free model
+  google: "gemini-flash-latest",
 } as const
 
 export async function POST(request: Request) {
   try {
-    const { text, provider = "groq" } = await request.json() as { text: string; provider?: Provider }
+    const { text, provider = "google" } = await request.json() as { text: string; provider?: Provider }
 
     if (!text || typeof text !== "string") {
       return Response.json(
@@ -46,10 +38,26 @@ export async function POST(request: Request) {
       )
     }
 
-    // Select model based on provider
-    const model = provider === "openrouter" 
-      ? openrouter(MODELS.openrouter)
-      : groq(MODELS.groq)
+    // Initialize provider and model based on request
+    let model;
+
+    if (provider === "google") {
+      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+
+      if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
+        return Response.json({ error: "Gemini API Key (GEMINI_API_KEY) belum dikonfigurasi." }, { status: 500 });
+      }
+
+      const google = createGoogleGenerativeAI({ apiKey });
+      model = google(MODELS.google);
+    } else {
+      const apiKey = process.env.GROQ_API_KEY;
+      if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
+        return Response.json({ error: "Groq API Key belum dikonfigurasi." }, { status: 500 });
+      }
+      const groq = createGroq({ apiKey });
+      model = groq(MODELS.groq);
+    }
 
     const { text: result } = await generateText({
       model,
@@ -59,7 +67,13 @@ export async function POST(request: Request) {
       temperature: 0.1,
     })
 
-    return Response.json({ result: result.trim() || "(tidak ada hasil)" })
+    const trimmedResult = result.trim() || "(tidak ada hasil)"
+    const scoring = calculateScoring(text, trimmedResult)
+
+    return Response.json({
+      result: trimmedResult,
+      scoring
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan"
     

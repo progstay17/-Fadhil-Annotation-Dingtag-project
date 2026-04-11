@@ -31,10 +31,17 @@ export const translations = {
     statusCopyFailed: "gagal menyalin",
     statusError: "Terjadi kesalahan",
     
+    // Scoring
+    accuracyScore: "Skor Akurasi",
+    showDiff: "Lihat Detail Perbedaan",
+    perfectScore: "Sempurna!",
+    goodScore: "Bagus, periksa sedikit.",
+    lowScore: "Banyak ketidaksesuaian.",
+
     // Model selector
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
-    modelOpenRouter: "OpenRouter (Llama 3.3 Free)",
+    modelGoogle: "Google Gemini (Fast & Stable)",
     
     // Footer
     footerInstructions: "cara pakai: ketik transkripsi → tandai jeda suara dengan",
@@ -71,10 +78,17 @@ export const translations = {
     statusCopyFailed: "failed to copy",
     statusError: "An error occurred",
     
+    // Scoring
+    accuracyScore: "Accuracy Score",
+    showDiff: "Show Diff Details",
+    perfectScore: "Perfect!",
+    goodScore: "Good, check slightly.",
+    lowScore: "Many inconsistencies.",
+
     // Model selector
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
-    modelOpenRouter: "OpenRouter (Llama 3.3 Free)",
+    modelGoogle: "Google Gemini (Fast & Stable)",
     
     // Footer
     footerInstructions: "how to use: type transcription → mark pauses with",
@@ -111,10 +125,17 @@ export const translations = {
     statusCopyFailed: "复制失败",
     statusError: "发生错误",
     
+    // Scoring
+    accuracyScore: "准确率得分",
+    showDiff: "显示差异细节",
+    perfectScore: "完美！",
+    goodScore: "不错，稍作检查。",
+    lowScore: "存在较多不一致。",
+
     // Model selector
     modelLabel: "模型",
     modelGroq: "Groq (Llama 3.3)",
-    modelOpenRouter: "OpenRouter (Llama 3.3 免费)",
+    modelGoogle: "Google Gemini (快速且稳定)",
     
     // Footer
     footerInstructions: "使用方法：输入转录内容 → 用",
