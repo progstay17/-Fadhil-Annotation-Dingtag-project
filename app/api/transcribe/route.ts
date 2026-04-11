@@ -25,7 +25,7 @@ type Provider = "groq" | "google" | "aimlapi"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  google: "gemini-flash-latest",
+  google: "gemini-2.5-flash",
   aimlapi: "google/gemma-3-4b-it",
 } as const
 
