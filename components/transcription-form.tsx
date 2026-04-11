@@ -6,13 +6,10 @@ import { StatusIndicator, StatusState } from "./status-indicator"
 import { Kbd } from "@/components/ui/kbd"
 import { useLanguage } from "./language-provider"
 
-type ModelProvider = "groq" | "openai" | "anthropic" | "google"
-
 export function TranscriptionForm() {
   const { t } = useLanguage()
   const [input, setInput] = useState("")
   const [result, setResult] = useState("")
-  const [provider, setProvider] = useState<ModelProvider>("groq")
   const [status, setStatus] = useState<{ state: StatusState; messageKey: string }>({
     state: "idle",
     messageKey: "statusReady",
@@ -33,7 +30,7 @@ export function TranscriptionForm() {
       const response = await fetch("/api/transcribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: input.trim(), provider }),
+        body: JSON.stringify({ text: input.trim() }),
       })
 
       const data = await response.json()
@@ -53,7 +50,7 @@ export function TranscriptionForm() {
     } finally {
       setIsProcessing(false)
     }
-  }, [input, provider, t])
+  }, [input, t])
 
   const copyToClipboard = useCallback(async () => {
     if (!result) return
@@ -108,21 +105,7 @@ export function TranscriptionForm() {
         />
       </TranscriptionCard>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">{t("modelLabel")}:</span>
-          <select
-            value={provider}
-            onChange={(e) => setProvider(e.target.value as ModelProvider)}
-            disabled={isProcessing}
-            className="font-mono text-xs bg-secondary text-foreground border border-border rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <option value="groq">{t("modelGroq")}</option>
-            <option value="openai">{t("modelOpenAI")}</option>
-            <option value="anthropic">{t("modelAnthropic")}</option>
-            <option value="google">{t("modelGoogle")}</option>
-          </select>
-        </div>
+      <div className="flex gap-2.5">
         <button
           onClick={process}
           disabled={isProcessing}
