@@ -21,12 +21,13 @@ CONTOH:
 Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
 Output: Aku lapar, mau makan. Kamu mau ikut?`
 
-type Provider = "groq" | "google" | "aiml"
+type Provider = "groq" | "google" | "aiml" | "openrouter"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
   google: "gemini-2.5-flash-lite",
-  aiml: "google/gemma-3-4b-it",
+  aiml: "google/gemma-3n-e4b-it",
+  openrouter: "meta-llama/llama-3.3-70b-instruct:free",
 } as const
 
 export async function POST(request: Request) {
@@ -62,6 +63,16 @@ export async function POST(request: Request) {
         baseURL: "https://api.aimlapi.com/v1",
       });
       model = aiml(MODELS.aiml);
+    } else if (provider === "openrouter") {
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
+        return Response.json({ error: "OpenRouter API Key belum dikonfigurasi." }, { status: 500 });
+      }
+      const openrouter = createOpenAI({
+        apiKey,
+        baseURL: "https://openrouter.ai/api/v1",
+      });
+      model = openrouter(MODELS.openrouter);
     } else {
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
