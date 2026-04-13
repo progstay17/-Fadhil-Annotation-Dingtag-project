@@ -1,6 +1,7 @@
 import { generateText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
+import { createOpenAI } from "@ai-sdk/openai"
 import { calculateScoring } from "@/lib/scoring"
 
 const PROMPT_SYSTEM = `Kamu adalah editor transkripsi audio profesional.
@@ -20,11 +21,13 @@ CONTOH:
 Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
 Output: Aku lapar, mau makan. Kamu mau ikut?`
 
-type Provider = "groq" | "google"
+type Provider = "groq" | "google" | "aiml" | "openrouter"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  google: "gemini-2.0-flash",
+  google: "gemini-2.5-flash-lite",
+  aiml: "google/gemma-3-4b-it",
+  openrouter: "meta-llama/llama-3.3-70b-instruct:free",
 } as const
 
 export async function POST(request: Request) {
@@ -50,6 +53,26 @@ export async function POST(request: Request) {
 
       const google = createGoogleGenerativeAI({ apiKey });
       model = google(MODELS.google);
+    } else if (provider === "aiml") {
+      const apiKey = process.env.AIML_API_KEY;
+      if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
+        return Response.json({ error: "AIML API Key belum dikonfigurasi." }, { status: 500 });
+      }
+      const aiml = createOpenAI({
+        apiKey,
+        baseURL: "https://api.aimlapi.com/v1",
+      });
+      model = aiml(MODELS.aiml);
+    } else if (provider === "openrouter") {
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
+        return Response.json({ error: "OpenRouter API Key belum dikonfigurasi." }, { status: 500 });
+      }
+      const openrouter = createOpenAI({
+        apiKey,
+        baseURL: "https://openrouter.ai/api/v1",
+      });
+      model = openrouter(MODELS.openrouter);
     } else {
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
@@ -63,7 +86,7 @@ export async function POST(request: Request) {
       model,
       system: PROMPT_SYSTEM,
       prompt: text,
-      maxOutputTokens: 1000,
+      maxTokens: 1000,
       temperature: 0.1,
     })
 

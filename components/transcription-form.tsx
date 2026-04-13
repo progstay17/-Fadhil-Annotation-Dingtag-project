@@ -7,7 +7,7 @@ import { ScoringResult } from "@/lib/scoring"
 import { Kbd } from "@/components/ui/kbd"
 import { useLanguage } from "./language-provider"
 
-type Provider = "groq" | "google"
+type Provider = "groq" | "google" | "aiml" | "openrouter"
 
 export function TranscriptionForm() {
   const { t } = useLanguage()
@@ -124,6 +124,8 @@ export function TranscriptionForm() {
             className="font-mono text-xs bg-secondary text-foreground border border-border rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <option value="google">{t("modelGoogle")}</option>
+            <option value="aiml">{t("modelAiml")}</option>
+            <option value="openrouter">{t("modelOpenRouter")}</option>
             <option value="groq">{t("modelGroq")}</option>
           </select>
         </div>
