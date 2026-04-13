@@ -26,7 +26,7 @@ type Provider = "groq" | "google" | "aiml" | "openrouter"
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
   google: "gemini-2.5-flash-lite",
-  aiml: "google/gemma-3-4b-it",
+  aiml: "google/gemma-3n-e4b-it",
   openrouter: "meta-llama/llama-3.3-70b-instruct:free",
 } as const
 
