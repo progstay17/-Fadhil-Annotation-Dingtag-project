@@ -42,6 +42,7 @@ export const translations = {
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
     modelGoogle: "Google Gemini (Gratis & Cepat)",
+    modelAiml: "Gemma 3 (AIML API)",
     
     // Footer
     footerInstructions: "cara pakai: ketik transkripsi → tandai jeda suara dengan",
@@ -89,6 +90,7 @@ export const translations = {
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
     modelGoogle: "Google Gemini (Free & Fast)",
+    modelAiml: "Gemma 3 (AIML API)",
     
     // Footer
     footerInstructions: "how to use: type transcription → mark pauses with",
@@ -136,6 +138,7 @@ export const translations = {
     modelLabel: "模型",
     modelGroq: "Groq (Llama 3.3)",
     modelGoogle: "Google Gemini (免费且快速)",
+    modelAiml: "Gemma 3 (AIML API)",
     
     // Footer
     footerInstructions: "使用方法：输入转录内容 → 用",
