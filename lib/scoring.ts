@@ -8,119 +8,88 @@ export interface ScoringResult {
   highlights: HighlightSegment[]
 }
 
+/**
+ * Calculates accuracy score by comparing input (with \ markers) and output.
+ * Ignores whitespace (spaces/newlines) in calculations.
+ */
 export function calculateScoring(input: string, output: string): ScoringResult {
-  // 1. Normalize and clean
-  const inputClean = input.replace(/\s+/g, " ").trim()
-  const outputClean = output.replace(/\s+/g, " ").trim()
-
-  // 2. Tokenize input by markers
-  // Example: "aku lapar\ mau makan\" -> ["aku lapar", "\", " mau makan", "\"]
-  const inputTokens = inputClean.split(/(\\)/g).filter(t => t !== "")
-
-  // 3. Simple word-level comparison logic
-  // Since the rule is "Don't change words", we can assume words stay the same.
-  // We look for where the markers should be.
-
-  let currentPos = 0
-  let totalMarkers = 0
-  let correctMarkers = 0
-  let addedPunctuation = 0
-  let missingMarkers = 0
+  // Remove all whitespace for logic comparison
+  const cleanInput = input.replace(/\s/g, "")
+  const cleanOutput = output.replace(/\s/g, "")
 
   const highlights: HighlightSegment[] = []
 
-  // Helper to check if a string is a punctuation mark
-  const isPunct = (s: string) => /[.,!?;:]/.test(s)
+  // Basic character-by-character alignment
+  let inIdx = 0
+  let outIdx = 0
 
-  // This is a simplified heuristic-based comparison
-  // In a real scenario, we might use a proper diff library or Levenshtein
+  let matches = 0
+  let totalOpportunities = 0
 
-  const inputWords = inputClean.split(" ")
-  const outputWords = outputClean.split(" ")
+  // We iterate through the input characters (excluding whitespace)
+  while (inIdx < cleanInput.length || outIdx < cleanOutput.length) {
+    const inChar = cleanInput[inIdx]
+    const outChar = cleanOutput[outIdx]
 
-  // Count markers in input
-  totalMarkers = (inputClean.match(/\\/g) || []).length
-
-  // Build highlights and calculate score
-  // We'll iterate through the input tokens
-  let outputPtr = 0
-  const outputTokens = outputClean.split(/([.,!?;:\s]+)/g).filter(t => t !== "")
-
-  for (const token of inputTokens) {
-    if (token === "\\") {
-      // Look for a punctuation in output around this position
-      let found = false
-      // Check next few tokens in output for punctuation
-      const lookAhead = 2
-      for (let i = 0; i < lookAhead && (outputPtr + i) < outputTokens.length; i++) {
-        if (isPunct(outputTokens[outputPtr + i])) {
-          highlights.push({ text: outputTokens[outputPtr + i], type: "correct" })
-          outputPtr += i + 1
-          correctMarkers++
-          found = true
-          break
-        }
+    if (inChar === "\\") {
+      totalOpportunities++
+      // Backslash should match a punctuation in output
+      if (outChar && /[.,!?;:]/.test(outChar)) {
+        highlights.push({ text: outChar, type: "correct" })
+        matches++
+        inIdx++
+        outIdx++
+      } else {
+        // Missing punctuation where \ was
+        highlights.push({ text: "[MISSING]", type: "missing" })
+        inIdx++
       }
-
-      if (!found) {
-        highlights.push({ text: " [MISSING] ", type: "missing" })
-        missingMarkers++
-      }
+    } else if (inChar && outChar && inChar.toLowerCase() === outChar.toLowerCase()) {
+      // Character match (ignoring case)
+      totalOpportunities++
+      highlights.push({ text: outChar, type: "normal" })
+      matches++
+      inIdx++
+      outIdx++
+    } else if (inChar && !outChar) {
+      // Input has character, output doesn't (missing)
+      totalOpportunities++
+      highlights.push({ text: inChar, type: "changed" })
+      inIdx++
+    } else if (!inChar && outChar) {
+      // Output has extra character
+      highlights.push({ text: outChar, type: "added" })
+      outIdx++
+    } else if (inChar && outChar && inChar !== outChar) {
+      // Mismatch
+      totalOpportunities++
+      highlights.push({ text: outChar, type: "changed" })
+      inIdx++
+      outIdx++
     } else {
-      // It's normal text
-      const cleanToken = token.trim()
-      if (cleanToken === "") {
-         highlights.push({ text: " ", type: "normal" })
-         continue
-      }
-
-      // Match the words from the token in the output
-      const tokenWords = cleanToken.split(/\s+/)
-      for (const word of tokenWords) {
-        // Find this word in output
-        let wordFound = false
-        while (outputPtr < outputTokens.length) {
-          const outToken = outputTokens[outputPtr]
-          if (outToken.toLowerCase().includes(word.toLowerCase())) {
-            highlights.push({ text: outToken, type: "normal" })
-            outputPtr++
-            wordFound = true
-            break
-          } else if (isPunct(outToken)) {
-            // Unintended punctuation
-            highlights.push({ text: outToken, type: "added" })
-            addedPunctuation++
-            outputPtr++
-          } else {
-            // Unexpected word change
-            highlights.push({ text: outToken, type: "changed" })
-            outputPtr++
-          }
-        }
-
-        if (!wordFound) {
-           // Word from input missing in output
-        }
-      }
+      break
     }
   }
 
-  // Final score calculation
-  // Base score 100
-  // Penalty for missing markers and added punctuation
-  const penaltyPerError = totalMarkers > 0 ? (100 / totalMarkers) : 10
-  let score = 100
+  const score = totalOpportunities > 0 ? (matches / totalOpportunities) * 100 : 100
 
-  if (totalMarkers > 0) {
-    score = (correctMarkers / totalMarkers) * 100
-    // Additional penalty for hallucinations (added punctuation)
-    score -= (addedPunctuation * 5)
-  } else if (addedPunctuation > 0) {
-    score = Math.max(0, 100 - (addedPunctuation * 10))
+  // Post-process highlights to merge consecutive segments of same type for better UI
+  const mergedHighlights: HighlightSegment[] = []
+  if (highlights.length > 0) {
+    let current = { ...highlights[0] }
+    for (let i = 1; i < highlights.length; i++) {
+      if (highlights[i].type === current.type) {
+        current.text += highlights[i].text
+      } else {
+        mergedHighlights.push(current)
+        current = { ...highlights[i] }
+      }
+    }
+    mergedHighlights.push(current)
   }
 
   return {
     score: Math.max(0, Math.min(100, Math.round(score))),
-    highlights
+    highlights: mergedHighlights
   }
 }

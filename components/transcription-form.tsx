@@ -85,6 +85,19 @@ export function TranscriptionForm() {
     setStatus({ state: "idle", messageKey: "statusReady" })
   }, [])
 
+  const flatten = useCallback(() => {
+    if (!input.trim()) return
+    const flattened = input
+      .toLowerCase()
+      .replace(/[\\.,!?;:]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+    setResult(flattened)
+    setScoring(null)
+    setStatus({ state: "success", messageKey: "statusDone" })
+    setTimeout(() => setStatus({ state: "idle", messageKey: "statusReady" }), 1500)
+  }, [input])
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
@@ -135,6 +148,13 @@ export function TranscriptionForm() {
           className="font-mono text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-md hover:bg-primary/90 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap"
         >
           {isProcessing ? t("processingButton") : `${t("processButton")} \u2192`}
+        </button>
+        <button
+          onClick={flatten}
+          disabled={isProcessing || !input.trim()}
+          className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+        >
+          {t("flatTextButton")}
         </button>
       </div>
 

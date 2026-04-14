@@ -3,7 +3,7 @@ export type Language = "id" | "en" | "zh"
 export const translations = {
   id: {
     // Header
-    appName: "// transkripsi.tool",
+    appName: "DingTag Annotation tool",
     tagline: "tanda baca + EYD otomatis",
     
     // Form
@@ -16,6 +16,7 @@ export const translations = {
     
     // Buttons
     processButton: "Proses",
+    flatTextButton: "Flat Teks",
     processingButton: "Memproses...",
     copyButton: "salin",
     editButton: "edit ulang",
@@ -52,7 +53,7 @@ export const translations = {
   },
   en: {
     // Header
-    appName: "// transcription.tool",
+    appName: "DingTag Annotation tool",
     tagline: "auto punctuation + grammar",
     
     // Form
@@ -65,6 +66,7 @@ export const translations = {
     
     // Buttons
     processButton: "Process",
+    flatTextButton: "Flat Text",
     processingButton: "Processing...",
     copyButton: "copy",
     editButton: "edit again",
@@ -101,7 +103,7 @@ export const translations = {
   },
   zh: {
     // Header
-    appName: "// 转录工具",
+    appName: "DingTag Annotation tool",
     tagline: "自动标点 + 语法校正",
     
     // Form
@@ -114,6 +116,7 @@ export const translations = {
     
     // Buttons
     processButton: "处理",
+    flatTextButton: "平展文本",
     processingButton: "处理中...",
     copyButton: "复制",
     editButton: "重新编辑",
