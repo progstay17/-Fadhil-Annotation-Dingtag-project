@@ -45,7 +45,22 @@ export const translations = {
     modelGoogle: "Google Gemini (Gratis & Cepat)",
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
-    
+
+    // V2 Mode
+    modeLabel: "Mode Transkripsi",
+    v1Title: "V1 — Standar",
+    v1Desc: "Proses langsung. Cepat, tanpa validasi tambahan.",
+    v2Title: "V2 — Beta",
+    v2Desc: "Proses + validasi posisi tanda baca otomatis. Jika ada posisi yang salah, sistem akan memperbaiki sendiri hingga 2x sebelum menampilkan hasil. Lebih akurat, sedikit lebih lambat.",
+    v2BadgeProcessing: "memproses...",
+    v2BadgeValid: "valid",
+    v2BadgeFixed: "fixed",
+    v2BadgeError: "masalah",
+    v2StatusDone: "selesai. semua {n} tanda baca sesuai posisi.",
+    v2StatusFixed: "selesai setelah {x}x fix otomatis.",
+    v2StatusError: "perlu review manual: ",
+    footerSignature: "untuk AIT dari Fadhil Ghifarion 法迪",
+
     // Footer
     footerInstructions: "cara pakai: ketik transkripsi → tandai jeda suara dengan",
     footerInstructionsSuffix: "→ klik proses",
@@ -95,7 +110,22 @@ export const translations = {
     modelGoogle: "Google Gemini (Free & Fast)",
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
-    
+
+    // V2 Mode
+    modeLabel: "Transcription Mode",
+    v1Title: "V1 — Standard",
+    v1Desc: "Direct process. Fast, no additional validation.",
+    v2Title: "V2 — Beta",
+    v2Desc: "Process + automatic punctuation position validation. If any positions are wrong, the system will self-fix up to 2x before showing results. More accurate, slightly slower.",
+    v2BadgeProcessing: "processing...",
+    v2BadgeValid: "valid",
+    v2BadgeFixed: "fixed",
+    v2BadgeError: "issues",
+    v2StatusDone: "done. all {n} punctuation marks matched.",
+    v2StatusFixed: "done after {x}x auto-fixes.",
+    v2StatusError: "manual review needed: ",
+    footerSignature: "for AIT from Fadhil Ghifarion 法迪",
+
     // Footer
     footerInstructions: "how to use: type transcription → mark pauses with",
     footerInstructionsSuffix: "→ click process",
@@ -145,7 +175,22 @@ export const translations = {
     modelGoogle: "Google Gemini (免费且快速)",
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
-    
+
+    // V2 Mode
+    modeLabel: "转录模式",
+    v1Title: "V1 — 标准",
+    v1Desc: "直接处理。快速，无需额外验证。",
+    v2Title: "V2 — Beta",
+    v2Desc: "处理 + 自动标点位置验证。如果位置错误，系统将在显示结果前自动修复最多2次。更准确，速度稍慢。",
+    v2BadgeProcessing: "处理中...",
+    v2BadgeValid: "有效",
+    v2BadgeFixed: "已修复",
+    v2BadgeError: "问题",
+    v2StatusDone: "完成。所有 {n} 个标点符号位置正确。",
+    v2StatusFixed: "在 {x} 次自动修复后完成。",
+    v2StatusError: "需要人工审核：",
+    footerSignature: "Fadhil Ghifarion 法迪 为 AIT 提供",
+
     // Footer
     footerInstructions: "使用方法：输入转录内容 → 用",
     footerInstructionsSuffix: "标记停顿 → 点击处理",
