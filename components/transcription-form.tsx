@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react"
 import { TranscriptionCard } from "./transcription-card"
 import { StatusIndicator, StatusState } from "./status-indicator"
-import { ScoringResult } from "@/lib/scoring"
+import { calculateScoring, ScoringResult } from "@/lib/scoring"
 import { Kbd } from "@/components/ui/kbd"
 import { useLanguage } from "./language-provider"
 
@@ -151,11 +151,17 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
   for (let i = 0; i < finalWordsArray.length; i++) {
     if (!anchorIndicesInOutput.has(i) && punctuationRegex.test(finalWordsArray[i])) {
       const original = finalWordsArray[i]
-      const fixed = original.replace(punctuationRegex, "")
+      let fixed = original.replace(punctuationRegex, "")
+
+      // If it was sentence-ending punctuation, replace with comma
+      if (/[.!?]$/.test(original)) {
+        fixed = fixed + ","
+      }
+
       finalWordsArray[i] = fixed
       changes.push({ original, fixed })
 
-      // Lowercase next word if it was capitalized and previous was sentence ender
+      // Lowercase next word if previous was sentence ender
       if (/[.!?]$/.test(original) && i + 1 < finalWordsArray.length) {
         const nextWord = finalWordsArray[i+1]
         if (/^[A-Z]/.test(nextWord)) {
@@ -310,8 +316,9 @@ export function TranscriptionForm() {
         })
       }
 
+      const finalScoring = calculateScoring(input.trim(), currentResult)
       setResult(currentResult)
-      setScoring(currentScoring)
+      setScoring(finalScoring)
       setStatus({ state: "success", messageKey: "statusDone" })
     } catch (error) {
       const message = error instanceof Error ? error.message : t("statusError")
@@ -319,7 +326,15 @@ export function TranscriptionForm() {
       // Truncate long error messages for display
       const displayMessage = message.length > 80 ? message.slice(0, 80) + "..." : message
       setStatus({ state: "error", messageKey: displayMessage })
-      setV2Status(prev => ({ ...prev, state: "idle" }))
+      if (version === "v2.1") {
+        setV2Status(prev => ({
+          ...prev,
+          state: "error",
+          masalah: [message]
+        }))
+      } else {
+        setV2Status(prev => ({ ...prev, state: "idle" }))
+      }
     } finally {
       setIsProcessing(false)
     }
@@ -486,22 +501,22 @@ export function TranscriptionForm() {
               )}
               {v2Status.state === "valid" && (
                 <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20 font-bold">
-                  {t("v2BadgeValid")}
+                  {t("v2BadgeValid")} · {v2Status.totalSlashes}/{v2Status.totalSlashes}
                 </span>
               )}
               {v2Status.state === "fixed_ai" && (
                 <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 font-bold">
-                  {t("v2BadgeFixedAI")}
+                  {t("v2BadgeFixed_ai")}
                 </span>
               )}
               {v2Status.state === "fixed_algo" && (
                 <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20 font-bold">
-                  {t("v2BadgeFixedAlgo")}
+                  {t("v2BadgeFixed_algo")}
                 </span>
               )}
               {v2Status.state === "fixed_warning" && (
                 <span className="px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20 font-bold">
-                  {t("v2BadgeWarning")}
+                  {t("v2BadgeFixed_warning")}
                 </span>
               )}
               {v2Status.state === "error" && (
