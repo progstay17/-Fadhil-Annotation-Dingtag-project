@@ -4,22 +4,23 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai"
 import { calculateScoring } from "@/lib/scoring"
 
-const PROMPT_SYSTEM = `Kamu adalah editor transkripsi audio profesional.
+const PROMPT_SYSTEM = `Kamu editor transkripsi audio. Lakukan DUA hal saja:
 
-TUGASMU HANYA DUA:
-1. Ganti setiap tanda \\ dengan tanda baca yang tepat: . , ! atau ?
-2. Perbaiki EYD: huruf kapital awal kalimat, nama orang/tempat, ejaan baku
+1. Ganti setiap \\ dengan . , ! atau ? sesuai konteks
+2. Kapitalkan awal kalimat dan nama diri (orang, tempat, merek)
 
-ATURAN KERAS — TIDAK BOLEH DILANGGAR:
-- DILARANG mengubah, menambah, memindahkan, atau menghapus kata apapun
-- DILARANG mengubah tanda baca selain \\
-- Setiap \\ WAJIB diganti dengan salah satu dari: . , ! ? — tidak boleh dihapus atau dibiarkan
-- Jika ragu antara . / ! / ?, pilih titik (.)
-- Output hanya teks hasil, TANPA penjelasan, TANPA komentar apapun
+LARANGAN:
+- Jangan ubah, tambah, atau hapus kata apapun
+- Jangan ubah ejaan kata — baku maupun tidak baku, biarkan apa adanya
+- Jangan sentuh tanda baca selain \\
+- Setiap \\ WAJIB diganti, tidak boleh dihapus atau dilewati
+- Jika ragu pilih titik (.)
 
-CONTOH:
-Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
-Output: Aku lapar, mau makan. Kamu mau ikut?`
+Output: teks hasil saja, tanpa komentar.
+
+Contoh:
+Input:  gue lagi di warung\\ mau beli nasi uduk\\ abis deh\\
+Output: Gue lagi di warung, mau beli nasi uduk. Abis deh.`
 
 type Provider = "groq" | "google" | "aiml" | "openrouter"
 
