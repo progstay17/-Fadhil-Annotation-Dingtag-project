@@ -288,7 +288,7 @@ export function TranscriptionForm() {
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-2">
           <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider font-semibold">
-            Mode Transkripsi
+            {t("modeLabel")}
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
@@ -301,10 +301,10 @@ export function TranscriptionForm() {
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <span className="font-mono text-sm font-bold flex items-center gap-2">
-                V1 — Standar
+                {t("v1Title")}
               </span>
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
-                Proses langsung. Cepat, tanpa validasi tambahan.
+                {t("v1Desc")}
               </span>
             </button>
             <button
@@ -317,13 +317,13 @@ export function TranscriptionForm() {
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <span className="font-mono text-sm font-bold flex items-center gap-2">
-                V2 — Beta
+                {t("v2Title")}
                 <span className="px-1.5 py-0.5 rounded-full bg-secondary text-[9px] font-bold uppercase tracking-tighter text-muted-foreground border border-border">
                   Beta
                 </span>
               </span>
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
-                Proses + validasi posisi tanda baca otomatis. Jika ada posisi yang salah, sistem akan memperbaiki sendiri hingga 2x sebelum menampilkan hasil. Lebih akurat, sedikit lebih lambat.
+                {t("v2Desc")}
               </span>
             </button>
           </div>
@@ -371,22 +371,22 @@ export function TranscriptionForm() {
               {v2Status.state === "loading" && (
                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 border border-purple-500/20 animate-pulse font-bold">
                   <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce" />
-                  memproses...
+                  {t("v2BadgeProcessing")}
                 </span>
               )}
               {v2Status.state === "valid" && (
                 <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20 font-bold">
-                  ✓ valid · {v2Status.totalSlashes}/{v2Status.totalSlashes}
+                  ✓ {t("v2BadgeValid")} · {v2Status.totalSlashes}/{v2Status.totalSlashes}
                 </span>
               )}
               {v2Status.state === "fixed" && (
                 <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 font-bold">
-                  ✓ fixed · (retry {v2Status.retryCount})
+                  ✓ {t("v2BadgeFixed")} · (retry {v2Status.retryCount})
                 </span>
               )}
               {v2Status.state === "error" && (
                 <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 border border-red-500/20 font-bold">
-                  ⚠ {v2Status.masalah.length} masalah
+                  ⚠ {v2Status.masalah.length} {t("v2BadgeError")}
                 </span>
               )}
             </div>
@@ -459,11 +459,11 @@ export function TranscriptionForm() {
             <div className="absolute bottom-0 left-0 right-0 pt-2 border-t border-border/50 flex items-center justify-between">
               <span className="text-[10px] text-muted-foreground italic">
                 {v2Status.state === "loading" && (
-                  <>memproses... {v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/2</span>}</>
+                  <>{t("statusProcessing")} {v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/2</span>}</>
                 )}
-                {v2Status.state === "valid" && `selesai. semua ${v2Status.totalSlashes} tanda baca sesuai posisi.`}
-                {v2Status.state === "fixed" && `selesai setelah ${v2Status.retryCount}x fix otomatis.`}
-                {v2Status.state === "error" && `perlu review manual: ${v2Status.masalah[0]}`}
+                {v2Status.state === "valid" && t("v2StatusDone").replace("{n}", v2Status.totalSlashes.toString())}
+                {v2Status.state === "fixed" && t("v2StatusFixed").replace("{x}", v2Status.retryCount.toString())}
+                {v2Status.state === "error" && `${t("v2StatusError")}${v2Status.masalah[0]}`}
               </span>
             </div>
           )}
