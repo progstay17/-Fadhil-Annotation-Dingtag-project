@@ -40,7 +40,7 @@ export default function Home() {
 
       <footer className="mt-auto pt-12 pb-4">
         <p className="text-xs text-muted-foreground font-mono">
-          for AIT from Fadhil Ghifarion 法迪
+          {t("footerSignature")}
         </p>
       </footer>
     </main>
