@@ -3,7 +3,7 @@ export type Language = "id" | "en" | "zh"
 export const translations = {
   id: {
     // Header
-    appName: "// transkripsi.tool",
+    appName: "DingTag Annotation tool",
     tagline: "tanda baca + EYD otomatis",
     
     // Form
@@ -53,7 +53,7 @@ export const translations = {
   },
   en: {
     // Header
-    appName: "// transcription.tool",
+    appName: "DingTag Annotation tool",
     tagline: "auto punctuation + grammar",
     
     // Form
@@ -103,7 +103,7 @@ export const translations = {
   },
   zh: {
     // Header
-    appName: "// 转录工具",
+    appName: "DingTag Annotation tool",
     tagline: "自动标点 + 语法校正",
     
     // Form
