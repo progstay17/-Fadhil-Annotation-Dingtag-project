@@ -3,14 +3,13 @@
 import { useState, useCallback } from "react"
 import { TranscriptionCard } from "./transcription-card"
 import { StatusIndicator, StatusState } from "./status-indicator"
-import { ScoringResult } from "@/lib/scoring"
+import { calculateScoring, ScoringResult } from "@/lib/scoring"
 import { Kbd } from "@/components/ui/kbd"
 import { useLanguage } from "./language-provider"
 
 type Provider = "groq" | "google" | "aiml" | "openrouter"
 
 const PROMPT_1 = `Kamu editor transkripsi audio. Lakukan DUA hal saja:
-
 1. Ganti setiap \\ dengan . , ! atau ? sesuai konteks
 2. Kapitalkan awal kalimat dan nama diri (orang, tempat, merek)
 
@@ -69,6 +68,8 @@ function validator(input: string, output: string): { ok: boolean; masalah: strin
 
   const slashCount = (input.match(/\\/g) || []).length
   const punctuationRegex = /[.,!?]$/
+
+  // Find words in output that carry punctuation
   const outputPunctuationWords = outputWords
     .map((word, index) => (punctuationRegex.test(word) ? { word, index } : null))
     .filter((item): item is { word: string; index: number } => item !== null)
@@ -83,23 +84,106 @@ function validator(input: string, output: string): { ok: boolean; masalah: strin
     if (!item) return
 
     const outputWord = item.word
-    const outputIdx = item.index
     const baseOutputWord = outputWord.replace(/[.,!?]$/, "").toLowerCase()
 
-    // Position check
-    if (outputIdx !== anchor.pos) {
-      // If position is different, report it even if it's a fuzzy match
-      masalah.push(`tanda baca ke-${i + 1} berada di posisi kata ke-${outputIdx + 1} ("${baseOutputWord}"), seharusnya di posisi ke-${anchor.pos + 1} ("${anchor.word}")`)
-    } else {
-      // Position is same, check content with fuzzy match
-      const isMatch = baseOutputWord.startsWith(anchor.word.slice(0, 3)) || anchor.word.startsWith(baseOutputWord.slice(0, 3))
-      if (!isMatch) {
-        masalah.push(`tanda baca ke-${i + 1} berada di kata "${baseOutputWord}", seharusnya di sekitar "${anchor.word}"`)
-      }
+    // Position check is handled by matching anchors to carrier list by index
+    // But we still verify word content match with fuzzy 3-char prefix
+    const isMatch = baseOutputWord.startsWith(anchor.word.slice(0, 3)) || anchor.word.startsWith(baseOutputWord.slice(0, 3))
+
+    // Also check if the absolute position matches
+    if (item.index !== anchor.pos) {
+      masalah.push(`tanda baca ke-${i + 1} ("${baseOutputWord}") berada di posisi ${item.index + 1}, seharusnya di posisi ${anchor.pos + 1} ("${anchor.word}")`)
+    } else if (!isMatch) {
+      masalah.push(`tanda baca ke-${i + 1} berada di kata "${baseOutputWord}", seharusnya di sekitar "${anchor.word}"`)
     }
   })
 
   return { ok: masalah.length === 0, masalah }
+}
+
+interface FixerChange {
+  original: string
+  fixed: string
+}
+
+function algorithmicFixer(input: string, output: string): { result: string; changes: FixerChange[]; wordCountMismatch: boolean } {
+  const changes: FixerChange[] = []
+  const inputWords = input.split(/\s+/).filter(w => w.length > 0)
+  const outputWords = output.split(/\s+/).filter(w => w.length > 0)
+  const wordCountMismatch = inputWords.length !== outputWords.length
+
+  const anchors: { word: string; pos: number }[] = []
+  inputWords.forEach((word, index) => {
+    if (word.endsWith("\\")) {
+      anchors.push({ word: word.slice(0, -1).toLowerCase(), pos: index })
+    }
+  })
+
+  let finalWordsArray = [...outputWords]
+  const punctuationRegex = /[.,!?]$/
+
+  // Rule 1: Remove all punctuation from words that are NOT in an anchor position
+  const anchorIndicesInOutput = new Set<number>()
+  anchors.forEach((anchor) => {
+    let foundIndex = -1
+    for (let offset = 0; offset <= 2; offset++) {
+      const checkIndices = offset === 0 ? [anchor.pos] : [anchor.pos - offset, anchor.pos + offset]
+      for (const idx of checkIndices) {
+        if (idx >= 0 && idx < finalWordsArray.length && !anchorIndicesInOutput.has(idx)) {
+          const word = finalWordsArray[idx].replace(punctuationRegex, "").toLowerCase()
+          if (word.startsWith(anchor.word.slice(0, 3)) || anchor.word.startsWith(word.slice(0, 3))) {
+            foundIndex = idx
+            break
+          }
+        }
+      }
+      if (foundIndex !== -1) break
+    }
+    if (foundIndex === -1 && anchor.pos < finalWordsArray.length && !anchorIndicesInOutput.has(anchor.pos)) {
+      foundIndex = anchor.pos
+    }
+    if (foundIndex !== -1) {
+      anchorIndicesInOutput.add(foundIndex)
+    }
+  })
+
+  // Apply removal and lowercasing
+  for (let i = 0; i < finalWordsArray.length; i++) {
+    if (!anchorIndicesInOutput.has(i) && punctuationRegex.test(finalWordsArray[i])) {
+      const original = finalWordsArray[i]
+      let fixed = original.replace(punctuationRegex, "")
+
+      // If it was sentence-ending punctuation, replace with comma
+      if (/[.!?]$/.test(original)) {
+        fixed = fixed + ","
+      }
+
+      finalWordsArray[i] = fixed
+      changes.push({ original, fixed })
+
+      // Lowercase next word if previous was sentence ender
+      if (/[.!?]$/.test(original) && i + 1 < finalWordsArray.length) {
+        const nextWord = finalWordsArray[i+1]
+        if (/^[A-Z]/.test(nextWord)) {
+          const lowerNext = nextWord[0].toLowerCase() + nextWord.slice(1)
+          finalWordsArray[i+1] = lowerNext
+          changes.push({ original: nextWord, fixed: lowerNext })
+        }
+      }
+    }
+  }
+
+  // Rule 2: Ensure each anchor has punctuation (insert comma if missing)
+  Array.from(anchorIndicesInOutput).sort((a,b) => a-b).forEach((idx) => {
+    if (!punctuationRegex.test(finalWordsArray[idx])) {
+      const original = finalWordsArray[idx]
+      const fixed = original + ","
+      finalWordsArray[idx] = fixed
+      changes.push({ original, fixed })
+    }
+  })
+
+  return { result: finalWordsArray.join(" "), changes, wordCountMismatch }
 }
 
 export function TranscriptionForm() {
@@ -109,23 +193,28 @@ export function TranscriptionForm() {
   const [scoring, setScoring] = useState<ScoringResult | null>(null)
   const [showDiff, setShowDiff] = useState(false)
   const [provider, setProvider] = useState<Provider>("google")
-  const [version, setVersion] = useState<"v1" | "v2">("v1")
+  const [version, setVersion] = useState<"v1" | "v2.1">("v1")
   const [status, setStatus] = useState<{ state: StatusState; messageKey: string }>({
     state: "idle",
     messageKey: "statusReady",
   })
   const [isProcessing, setIsProcessing] = useState(false)
   const [v2Status, setV2Status] = useState<{
-    state: "idle" | "loading" | "valid" | "fixed" | "error"
+    state: "idle" | "loading" | "valid" | "fixed_ai" | "fixed_algo" | "fixed_warning" | "error"
     retryCount: number
     masalah: string[]
     totalSlashes: number
+    fixerChanges: FixerChange[]
+    wordCountMismatch: boolean
   }>({
     state: "idle",
     retryCount: 0,
     masalah: [],
     totalSlashes: 0,
+    fixerChanges: [],
+    wordCountMismatch: false,
   })
+  const [showFixerDiff, setShowFixerDiff] = useState(false)
 
   const process = useCallback(async () => {
     if (!input.trim()) {
@@ -136,8 +225,16 @@ export function TranscriptionForm() {
     setIsProcessing(true)
     setStatus({ state: "loading", messageKey: "statusProcessing" })
     setResult("")
+    setShowFixerDiff(false)
     const totalSlashes = (input.match(/\\/g) || []).length
-    setV2Status({ state: "loading", retryCount: 0, masalah: [], totalSlashes })
+    setV2Status({
+      state: "loading",
+      retryCount: 0,
+      masalah: [],
+      totalSlashes,
+      fixerChanges: [],
+      wordCountMismatch: false
+    })
 
     try {
       let currentResult = ""
@@ -163,11 +260,12 @@ export function TranscriptionForm() {
       currentResult = stripExtraText(data.result)
       currentScoring = data.scoring
 
-      if (version === "v2") {
+      if (version === "v2.1") {
         const validation = validator(input.trim(), currentResult)
         isValid = validation.ok
         currentMasalah = validation.masalah
 
+        // AI Retry Loop
         while (!isValid && currentRetry < 2) {
           currentRetry++
           setV2Status(prev => ({ ...prev, retryCount: currentRetry, masalah: currentMasalah }))
@@ -193,16 +291,34 @@ export function TranscriptionForm() {
           currentMasalah = retryValidation.masalah
         }
 
+        let finalState: "valid" | "fixed_ai" | "fixed_algo" | "fixed_warning" = "valid"
+        let fixerChanges: FixerChange[] = []
+        let wordCountMismatch = false
+
+        if (isValid) {
+          finalState = currentRetry > 0 ? "fixed_ai" : "valid"
+        } else {
+          // STEP 4: ALGORITHMIC FIXER
+          const fixResult = algorithmicFixer(input.trim(), currentResult)
+          currentResult = fixResult.result
+          fixerChanges = fixResult.changes
+          wordCountMismatch = fixResult.wordCountMismatch
+          finalState = wordCountMismatch ? "fixed_warning" : "fixed_algo"
+        }
+
         setV2Status({
-          state: isValid ? (currentRetry > 0 ? "fixed" : "valid") : "error",
+          state: finalState,
           retryCount: currentRetry,
           masalah: currentMasalah,
-          totalSlashes
+          totalSlashes,
+          fixerChanges,
+          wordCountMismatch
         })
       }
 
+      const finalScoring = calculateScoring(input.trim(), currentResult)
       setResult(currentResult)
-      setScoring(currentScoring)
+      setScoring(finalScoring)
       setStatus({ state: "success", messageKey: "statusDone" })
     } catch (error) {
       const message = error instanceof Error ? error.message : t("statusError")
@@ -210,7 +326,15 @@ export function TranscriptionForm() {
       // Truncate long error messages for display
       const displayMessage = message.length > 80 ? message.slice(0, 80) + "..." : message
       setStatus({ state: "error", messageKey: displayMessage })
-      setV2Status(prev => ({ ...prev, state: "idle" }))
+      if (version === "v2.1") {
+        setV2Status(prev => ({
+          ...prev,
+          state: "error",
+          masalah: [message]
+        }))
+      } else {
+        setV2Status(prev => ({ ...prev, state: "idle" }))
+      }
     } finally {
       setIsProcessing(false)
     }
@@ -240,7 +364,8 @@ export function TranscriptionForm() {
     setScoring(null)
     setShowDiff(false)
     setStatus({ state: "idle", messageKey: "statusReady" })
-    setV2Status({ state: "idle", retryCount: 0, masalah: [], totalSlashes: 0 })
+    setV2Status({ state: "idle", retryCount: 0, masalah: [], totalSlashes: 0, fixerChanges: [], wordCountMismatch: false })
+    setShowFixerDiff(false)
   }, [])
 
   const flatten = useCallback(() => {
@@ -308,10 +433,10 @@ export function TranscriptionForm() {
               </span>
             </button>
             <button
-              onClick={() => setVersion("v2")}
+              onClick={() => setVersion("v2.1")}
               disabled={isProcessing}
               className={`flex flex-col items-start p-3 rounded-md border transition-all text-left ${
-                version === "v2"
+                version === "v2.1"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
@@ -366,7 +491,7 @@ export function TranscriptionForm() {
       <TranscriptionCard
         label={t("outputLabel")}
         hint={
-          version === "v2" && v2Status.state !== "idle" && (
+          version === "v2.1" && v2Status.state !== "idle" && (
             <div className="flex items-center gap-2">
               {v2Status.state === "loading" && (
                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 border border-purple-500/20 animate-pulse font-bold">
@@ -376,17 +501,27 @@ export function TranscriptionForm() {
               )}
               {v2Status.state === "valid" && (
                 <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20 font-bold">
-                  ✓ {t("v2BadgeValid")} · {v2Status.totalSlashes}/{v2Status.totalSlashes}
+                  {t("v2BadgeValid")} · {v2Status.totalSlashes}/{v2Status.totalSlashes}
                 </span>
               )}
-              {v2Status.state === "fixed" && (
+              {v2Status.state === "fixed_ai" && (
                 <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 font-bold">
-                  ✓ {t("v2BadgeFixed")} · (retry {v2Status.retryCount})
+                  {t("v2BadgeFixed_ai")}
+                </span>
+              )}
+              {v2Status.state === "fixed_algo" && (
+                <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20 font-bold">
+                  {t("v2BadgeFixed_algo")}
+                </span>
+              )}
+              {v2Status.state === "fixed_warning" && (
+                <span className="px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20 font-bold">
+                  {t("v2BadgeFixed_warning")}
                 </span>
               )}
               {v2Status.state === "error" && (
                 <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 border border-red-500/20 font-bold">
-                  ⚠ {v2Status.masalah.length} {t("v2BadgeError")}
+                  {t("v2BadgeError")}
                 </span>
               )}
             </div>
@@ -455,20 +590,60 @@ export function TranscriptionForm() {
             </span>
           )}
 
-          {version === "v2" && v2Status.state !== "idle" && (
-            <div className="absolute bottom-0 left-0 right-0 pt-2 border-t border-border/50 flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground italic">
-                {v2Status.state === "loading" && (
-                  <>{t("statusProcessing")} {v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/2</span>}</>
-                )}
-                {v2Status.state === "valid" && t("v2StatusDone").replace("{n}", v2Status.totalSlashes.toString())}
-                {v2Status.state === "fixed" && t("v2StatusFixed").replace("{x}", v2Status.retryCount.toString())}
-                {v2Status.state === "error" && `${t("v2StatusError")}${v2Status.masalah[0]}`}
-              </span>
+          {version === "v2.1" && v2Status.state !== "idle" && (
+            <div className="absolute bottom-0 left-0 right-0 pt-2 border-t border-border/50 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground italic">
+                  {v2Status.state === "loading" && (
+                    <>{t("statusProcessing")} {v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/2</span>}</>
+                  )}
+                  {v2Status.state === "valid" && `selesai. semua ${v2Status.totalSlashes} tanda baca sesuai posisi.`}
+                  {v2Status.state === "fixed_ai" && `selesai setelah ${v2Status.retryCount}x fix otomatis.`}
+                  {v2Status.state === "fixed_algo" && `selesai. algorithmic fixer digunakan.`}
+                  {v2Status.state === "fixed_warning" && `selesai. algorithmic fixer digunakan dengan peringatan.`}
+                  {v2Status.state === "error" && `perlu review manual: ${v2Status.masalah[0]}`}
+                </span>
+              </div>
+              {v2Status.wordCountMismatch && (
+                <span className="text-[10px] text-orange-600 font-bold uppercase tracking-tight">
+                  {t("v2Warning")}
+                </span>
+              )}
             </div>
           )}
         </div>
       </TranscriptionCard>
+
+      {version === "v2.1" && v2Status.fixerChanges.length > 0 && (
+        <div className="bg-secondary/50 border border-border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowFixerDiff(!showFixerDiff)}
+            className="w-full px-4 py-2 flex items-center justify-between hover:bg-secondary transition-colors"
+          >
+            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              {t("v2FixerTitle")} ({v2Status.fixerChanges.length})
+            </span>
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {showFixerDiff ? "▲" : "▼"}
+            </span>
+          </button>
+          {showFixerDiff && (
+            <div className="px-4 py-3 border-t border-border flex flex-col gap-1.5 max-h-60 overflow-y-auto">
+              {v2Status.fixerChanges.map((change, i) => (
+                <div key={i} className="font-mono text-[11px] flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-600 line-through decoration-red-600/50">
+                    {change.original}
+                  </span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 font-bold">
+                    {change.fixed}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {scoring && (
         <div className="bg-secondary/30 border border-border rounded-lg p-4 flex flex-col gap-2">

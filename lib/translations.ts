@@ -46,19 +46,20 @@ export const translations = {
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 
-    // V2 Mode
+    // V2.1 Mode
     modeLabel: "Mode Transkripsi",
     v1Title: "V1 — Standar",
     v1Desc: "Proses langsung. Cepat, tanpa validasi tambahan.",
-    v2Title: "V2 — Beta",
-    v2Desc: "Proses + validasi posisi tanda baca otomatis. Jika ada posisi yang salah, sistem akan memperbaiki sendiri hingga 2x sebelum menampilkan hasil. Lebih akurat, sedikit lebih lambat.",
+    v2Title: "V2.1 — Beta",
+    v2Desc: "Proses + validasi + algorithmic fixer otomatis. Lebih akurat, sedikit lebih lambat.",
     v2BadgeProcessing: "memproses...",
-    v2BadgeValid: "valid",
-    v2BadgeFixed: "fixed",
-    v2BadgeError: "masalah",
-    v2StatusDone: "selesai. semua {n} tanda baca sesuai posisi.",
-    v2StatusFixed: "selesai setelah {x}x fix otomatis.",
-    v2StatusError: "perlu review manual: ",
+    v2BadgeValid: "✓ valid",
+    v2BadgeFixed_ai: "✓ difix AI",
+    v2BadgeFixed_algo: "✓ difix otomatis",
+    v2BadgeFixed_warning: "⚠ difix otomatis · cek kata",
+    v2BadgeError: "✗ perlu review",
+    v2FixerTitle: "Perubahan oleh fixer",
+    v2Warning: "Peringatan: jumlah kata berubah. Hasil perlu dicek ulang.",
     footerSignature: "untuk AIT dari Fadhil Ghifarion 法迪",
 
     // Footer
@@ -111,19 +112,20 @@ export const translations = {
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 
-    // V2 Mode
+    // V2.1 Mode
     modeLabel: "Transcription Mode",
     v1Title: "V1 — Standard",
     v1Desc: "Direct process. Fast, no additional validation.",
-    v2Title: "V2 — Beta",
-    v2Desc: "Process + automatic punctuation position validation. If any positions are wrong, the system will self-fix up to 2x before showing results. More accurate, slightly slower.",
+    v2Title: "V2.1 — Beta",
+    v2Desc: "Process + validation + automatic algorithmic fixer. More accurate, slightly slower.",
     v2BadgeProcessing: "processing...",
-    v2BadgeValid: "valid",
-    v2BadgeFixed: "fixed",
-    v2BadgeError: "issues",
-    v2StatusDone: "done. all {n} punctuation marks matched.",
-    v2StatusFixed: "done after {x}x auto-fixes.",
-    v2StatusError: "manual review needed: ",
+    v2BadgeValid: "✓ valid",
+    v2BadgeFixed_ai: "✓ fixed (AI)",
+    v2BadgeFixed_algo: "✓ fixed (algo)",
+    v2BadgeFixed_warning: "⚠ fixed (algo) · check words",
+    v2BadgeError: "✗ needs review",
+    v2FixerTitle: "Changes by fixer",
+    v2Warning: "Warning: word count changed. Result may need manual check.",
     footerSignature: "for AIT from Fadhil Ghifarion 法迪",
 
     // Footer
@@ -176,19 +178,20 @@ export const translations = {
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 
-    // V2 Mode
+    // V2.1 Mode
     modeLabel: "转录模式",
     v1Title: "V1 — 标准",
     v1Desc: "直接处理。快速，无需额外验证。",
-    v2Title: "V2 — Beta",
-    v2Desc: "处理 + 自动标点位置验证。如果位置错误，系统将在显示结果前自动修复最多2次。更准确，速度稍慢。",
+    v2Title: "V2.1 — Beta",
+    v2Desc: "处理 + 验证 + 自动算法修复。更准确，速度稍慢。",
     v2BadgeProcessing: "处理中...",
-    v2BadgeValid: "有效",
-    v2BadgeFixed: "已修复",
-    v2BadgeError: "问题",
-    v2StatusDone: "完成。所有 {n} 个标点符号位置正确。",
-    v2StatusFixed: "在 {x} 次自动修复后完成。",
-    v2StatusError: "需要人工审核：",
+    v2BadgeValid: "✓ 有效",
+    v2BadgeFixed_ai: "✓ AI 修复",
+    v2BadgeFixed_algo: "✓ 自动修复",
+    v2BadgeFixed_warning: "⚠ 自动修复 · 检查字数",
+    v2BadgeError: "✗ 需要审核",
+    v2FixerTitle: "修复程序所做的更改",
+    v2Warning: "警告：字数已更改。结果可能需要手动检查。",
     footerSignature: "Fadhil Ghifarion 法迪 为 AIT 提供",
 
     // Footer
