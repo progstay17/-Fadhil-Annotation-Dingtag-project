@@ -21,8 +21,12 @@ function tokenize(text: string): string[] {
  * Ignores whitespace and newlines for scoring, but preserves them for highlights.
  */
 export function calculateScoring(input: string, output: string): ScoringResult {
-  const inTokens = tokenize(input)
-  const outTokens = tokenize(output)
+  // Normalize hyphens to spaces for comparison as per requirements
+  const normalizedInput = input.replace(/-/g, " ")
+  const normalizedOutput = output.replace(/-/g, " ")
+
+  const inTokens = tokenize(normalizedInput)
+  const outTokens = tokenize(normalizedOutput)
 
   // Filter out whitespace for alignment logic but keep track of indices
   const inWords = inTokens.filter(t => /\S/.test(t))

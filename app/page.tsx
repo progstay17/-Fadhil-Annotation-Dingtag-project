@@ -2,7 +2,9 @@
 
 import { TranscriptionForm } from "@/components/transcription-form"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { useLanguage } from "@/components/language-provider"
+import { Linkedin, Mail } from "lucide-react"
 
 export default function Home() {
   const { t } = useLanguage()
@@ -23,7 +25,10 @@ export default function Home() {
               ALPHA INNOVATION TECHNOLOGY
             </p>
           </div>
-          <LanguageSwitcher />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <LanguageSwitcher />
+          </div>
         </div>
 
         <div className="flex items-baseline gap-3 border-t border-border pt-4">
@@ -38,10 +43,29 @@ export default function Home() {
 
       <TranscriptionForm />
 
-      <footer className="mt-auto pt-12 pb-4">
-        <p className="text-xs text-muted-foreground font-mono">
+      <footer className="mt-auto pt-12 pb-8 flex flex-col items-center gap-4">
+        <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
           {t("footerSignature")}
         </p>
+        <div className="flex items-center gap-4 text-muted-foreground/60">
+          <span className="font-mono text-[11px] font-medium tracking-tight">Fadhil Ghifari</span>
+          <div className="flex items-center gap-3">
+            <a
+              href="https://www.linkedin.com/in/fadhil-muhammad-ghifari?utm_source=share_via&utm_content=profile&utm_medium=member_android"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-primary transition-colors"
+            >
+              <Linkedin className="w-3.5 h-3.5" />
+            </a>
+            <a
+              href="mailto:fadhil@kunbyte.com"
+              className="hover:text-primary transition-colors"
+            >
+              <Mail className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
       </footer>
     </main>
   )
