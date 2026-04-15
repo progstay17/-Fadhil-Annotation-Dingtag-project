@@ -16,7 +16,7 @@ export const translations = {
     
     // Buttons
     processButton: "Proses",
-    flatTextButton: "Flat Teks",
+    flatTextButton: "Teks Datar",
     processingButton: "Memproses...",
     copyButton: "salin",
     editButton: "edit ulang",
@@ -45,7 +45,23 @@ export const translations = {
     modelGoogle: "Google Gemini (Gratis & Cepat)",
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
-    
+
+    // V2.1 Mode
+    modeLabel: "Mode Transkripsi",
+    v1Title: "V1 — Standar",
+    v1Desc: "Proses langsung. Cepat, tanpa validasi tambahan.",
+    v2Title: "V2.1 — Beta",
+    v2Desc: "Proses + validasi + algorithmic fixer otomatis. Lebih akurat, sedikit lebih lambat.",
+    v2BadgeProcessing: "memproses...",
+    v2BadgeValid: "✓ valid",
+    v2BadgeFixed_ai: "✓ difix AI",
+    v2BadgeFixed_algo: "✓ difix otomatis",
+    v2BadgeFixed_warning: "⚠ difix otomatis · cek kata",
+    v2BadgeError: "✗ perlu review",
+    v2FixerTitle: "Perubahan oleh fixer",
+    v2Warning: "Peringatan: jumlah kata berubah. Hasil perlu dicek ulang.",
+    footerSignature: "untuk AIT dari Fadhil Ghifarion 法迪",
+
     // Footer
     footerInstructions: "cara pakai: ketik transkripsi → tandai jeda suara dengan",
     footerInstructionsSuffix: "→ klik proses",
@@ -95,7 +111,23 @@ export const translations = {
     modelGoogle: "Google Gemini (Free & Fast)",
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
-    
+
+    // V2.1 Mode
+    modeLabel: "Transcription Mode",
+    v1Title: "V1 — Standard",
+    v1Desc: "Direct process. Fast, no additional validation.",
+    v2Title: "V2.1 — Beta",
+    v2Desc: "Process + validation + automatic algorithmic fixer. More accurate, slightly slower.",
+    v2BadgeProcessing: "processing...",
+    v2BadgeValid: "✓ valid",
+    v2BadgeFixed_ai: "✓ fixed (AI)",
+    v2BadgeFixed_algo: "✓ fixed (algo)",
+    v2BadgeFixed_warning: "⚠ fixed (algo) · check words",
+    v2BadgeError: "✗ needs review",
+    v2FixerTitle: "Changes by fixer",
+    v2Warning: "Warning: word count changed. Result may need manual check.",
+    footerSignature: "for AIT from Fadhil Ghifarion 法迪",
+
     // Footer
     footerInstructions: "how to use: type transcription → mark pauses with",
     footerInstructionsSuffix: "→ click process",
@@ -145,7 +177,23 @@ export const translations = {
     modelGoogle: "Google Gemini (免费且快速)",
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
-    
+
+    // V2.1 Mode
+    modeLabel: "转录模式",
+    v1Title: "V1 — 标准",
+    v1Desc: "直接处理。快速，无需额外验证。",
+    v2Title: "V2.1 — Beta",
+    v2Desc: "处理 + 验证 + 自动算法修复。更准确，速度稍慢。",
+    v2BadgeProcessing: "处理中...",
+    v2BadgeValid: "✓ 有效",
+    v2BadgeFixed_ai: "✓ AI 修复",
+    v2BadgeFixed_algo: "✓ 自动修复",
+    v2BadgeFixed_warning: "⚠ 自动修复 · 检查字数",
+    v2BadgeError: "✗ 需要审核",
+    v2FixerTitle: "修复程序所做的更改",
+    v2Warning: "警告：字数已更改。结果可能需要手动检查。",
+    footerSignature: "Fadhil Ghifarion 法迪 为 AIT 提供",
+
     // Footer
     footerInstructions: "使用方法：输入转录内容 → 用",
     footerInstructionsSuffix: "标记停顿 → 点击处理",

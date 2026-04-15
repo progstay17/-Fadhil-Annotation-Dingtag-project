@@ -33,7 +33,11 @@ const MODELS = {
 
 export async function POST(request: Request) {
   try {
-    const { text, provider = "google" } = await request.json() as { text: string; provider?: Provider }
+    const { text, provider = "google", systemPrompt } = await request.json() as {
+      text: string;
+      provider?: Provider;
+      systemPrompt?: string;
+    }
 
     if (!text || typeof text !== "string") {
       return Response.json(
@@ -85,7 +89,7 @@ export async function POST(request: Request) {
 
     const { text: result } = await generateText({
       model,
-      system: PROMPT_SYSTEM,
+      system: systemPrompt || PROMPT_SYSTEM,
       prompt: text,
       maxTokens: 1000,
       temperature: 0.1,
