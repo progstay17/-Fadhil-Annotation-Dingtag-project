@@ -216,6 +216,31 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
     .replace(/\s+/g, " ")    // Normalize spaces
     .trim()
 
+  // Ensure last word has sentence-ender
+  if (finalWordsArray.length > 0) {
+    const lastIdx = finalWordsArray.length - 1
+    const lastWord = finalWordsArray[lastIdx]
+    if (!/[.!?]$/.test(lastWord)) {
+      const original = lastWord
+      const fixed = original.replace(/[.,]$/, "") + "."
+      finalWordsArray[lastIdx] = fixed
+      // Only push to changes if it actually changed
+      if (original !== fixed) {
+        changes.push({ original, fixed })
+      }
+    }
+  }
+
+  result = finalWordsArray.join(" ")
+
+  // FINAL CLEANUP PASS (Again to ensure joining didn't mess up)
+  result = result
+    .replace(/\\/g, "")      // Remove any remaining \
+    .replace(/,\s*,/g, ",")  // Double commas
+    .replace(/,\s*\./g, ".") // Comma followed by period
+    .replace(/\s+/g, " ")    // Normalize spaces
+    .trim()
+
   return { result, changes, wordCountMismatch }
 }
 
@@ -226,7 +251,7 @@ export function TranscriptionForm() {
   const [scoring, setScoring] = useState<ScoringResult | null>(null)
   const [showDiff, setShowDiff] = useState(false)
   const [provider, setProvider] = useState<Provider>("google")
-  const [version, setVersion] = useState<"v1" | "v2.1">("v1")
+  const [version, setVersion] = useState<"v1" | "v2.2">("v1")
   const [status, setStatus] = useState<{ state: StatusState; messageKey: string }>({
     state: "idle",
     messageKey: "statusReady",
@@ -295,7 +320,7 @@ export function TranscriptionForm() {
       currentResult = stripExtraText(data.result)
       currentScoring = data.scoring
 
-      if (version === "v2.1") {
+      if (version === "v2.2") {
         const validation = validator(normalizedInputText, currentResult)
         isValid = validation.ok
         currentMasalah = validation.masalah
@@ -361,7 +386,7 @@ export function TranscriptionForm() {
       // Truncate long error messages for display
       const displayMessage = message.length > 80 ? message.slice(0, 80) + "..." : message
       setStatus({ state: "error", messageKey: displayMessage })
-      if (version === "v2.1") {
+      if (version === "v2.2") {
         setV2Status(prev => ({
           ...prev,
           state: "error",
@@ -478,10 +503,10 @@ export function TranscriptionForm() {
               </span>
             </button>
             <button
-              onClick={() => setVersion("v2.1")}
+              onClick={() => setVersion("v2.2")}
               disabled={isProcessing}
               className={`flex flex-col items-start p-3 rounded-md border transition-all text-left ${
-                version === "v2.1"
+                version === "v2.2"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
@@ -536,7 +561,7 @@ export function TranscriptionForm() {
       <TranscriptionCard
         label={t("outputLabel")}
         hint={
-          version === "v2.1" && v2Status.state !== "idle" && (
+          version === "v2.2" && v2Status.state !== "idle" && (
             <div className="flex items-center gap-2">
               {v2Status.state === "loading" && (
                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 border border-purple-500/20 animate-pulse font-bold">
@@ -635,7 +660,7 @@ export function TranscriptionForm() {
             </span>
           )}
 
-          {version === "v2.1" && v2Status.state !== "idle" && (
+          {version === "v2.2" && v2Status.state !== "idle" && (
             <div className="absolute bottom-0 left-0 right-0 pt-2 border-t border-border/50 flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground italic">
@@ -659,7 +684,7 @@ export function TranscriptionForm() {
         </div>
       </TranscriptionCard>
 
-      {version === "v2.1" && v2Status.fixerChanges.length > 0 && (
+      {version === "v2.2" && v2Status.fixerChanges.length > 0 && (
         <div className="bg-secondary/50 border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => setShowFixerDiff(!showFixerDiff)}

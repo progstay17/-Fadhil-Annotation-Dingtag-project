@@ -46,11 +46,11 @@ export const translations = {
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 
-    // V2.1 Mode
+    // V2.2 Mode
     modeLabel: "Mode Transkripsi",
     v1Title: "V1 — Standar",
     v1Desc: "Proses langsung. Cepat, tanpa validasi tambahan.",
-    v2Title: "V2.1 — Beta",
+    v2Title: "V2.2 — Beta",
     v2Desc: "Proses + validasi + algorithmic fixer otomatis. Lebih akurat, sedikit lebih lambat.",
     v2BadgeProcessing: "memproses...",
     v2BadgeValid: "✓ valid",
@@ -112,11 +112,11 @@ export const translations = {
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 
-    // V2.1 Mode
+    // V2.2 Mode
     modeLabel: "Transcription Mode",
     v1Title: "V1 — Standard",
     v1Desc: "Direct process. Fast, no additional validation.",
-    v2Title: "V2.1 — Beta",
+    v2Title: "V2.2 — Beta",
     v2Desc: "Process + validation + automatic algorithmic fixer. More accurate, slightly slower.",
     v2BadgeProcessing: "processing...",
     v2BadgeValid: "✓ valid",
@@ -178,11 +178,11 @@ export const translations = {
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 
-    // V2.1 Mode
+    // V2.2 Mode
     modeLabel: "转录模式",
     v1Title: "V1 — 标准",
     v1Desc: "直接处理。快速，无需额外验证。",
-    v2Title: "V2.1 — Beta",
+    v2Title: "V2.2 — Beta",
     v2Desc: "处理 + 验证 + 自动算法修复。更准确，速度稍慢。",
     v2BadgeProcessing: "处理中...",
     v2BadgeValid: "✓ 有效",
