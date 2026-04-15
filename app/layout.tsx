@@ -17,25 +17,16 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'transkripsi.tool - Tanda Baca & EYD Otomatis',
+  title: 'DingTag Annotation tool - Tanda Baca & EYD Otomatis',
   description: 'Alat transkripsi dengan penambahan tanda baca dan koreksi EYD otomatis menggunakan AI',
   generator: 'v0.app',
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
+        url: '/ait-logo.png',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: '/ait-logo.png',
   },
 }
 

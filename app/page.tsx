@@ -8,9 +8,27 @@ export default function Home() {
   const { t } = useLanguage()
 
   return (
-    <main className="min-h-screen flex flex-col items-center px-5 py-12">
-      <header className="w-full max-w-3xl mb-10 flex items-center justify-between">
-        <div className="flex items-baseline gap-3">
+    <main className="min-h-screen flex flex-col items-center px-5 py-8">
+      <header className="w-full max-w-3xl mb-8 flex flex-col gap-6">
+        <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-1">
+            <pre className="font-mono text-[8px] sm:text-[10px] leading-[1.2] text-primary font-bold">
+{`      @@@@@@@@@           @@@@@@      @@@@@@@@@@@@@@@@@@@@
+     @@@@@@@@@@@          @@@@@@      @@@@@@@@@@@@@@@@@@@@
+    @@@@@   @@@@@         @@@@@@             @@@@@@
+   @@@@@     @@@@@        @@@@@@             @@@@@@
+  @@@@@@@@@@@@@@@@@       @@@@@@             @@@@@@
+ @@@@@@@@@@@@@@@@@@@      @@@@@@             @@@@@@
+@@@@@           @@@@@     @@@@@@             @@@@@@`}
+            </pre>
+            <p className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground font-bold">
+              ALPHA INNOVATION TECHNOLOGY
+            </p>
+          </div>
+          <LanguageSwitcher />
+        </div>
+
+        <div className="flex items-baseline gap-3 border-t border-border pt-4">
           <h1 className="font-mono text-lg font-medium text-primary tracking-tight">
             {t("appName")}
           </h1>
@@ -18,7 +36,6 @@ export default function Home() {
             {t("tagline")}
           </span>
         </div>
-        <LanguageSwitcher />
       </header>
 
       <TranscriptionForm />

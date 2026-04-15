@@ -1,30 +1,34 @@
 import { generateText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
+import { createOpenAI } from "@ai-sdk/openai"
 import { calculateScoring } from "@/lib/scoring"
 
-const PROMPT_SYSTEM = `Kamu adalah editor transkripsi audio profesional.
+const PROMPT_SYSTEM = `Kamu editor transkripsi audio. Lakukan DUA hal saja:
 
-TUGASMU HANYA DUA:
-1. Ganti setiap tanda \\ dengan tanda baca yang tepat: . , ! atau ?
-2. Perbaiki EYD: huruf kapital awal kalimat, nama orang/tempat, ejaan baku
+1. Ganti setiap \\ dengan . , ! atau ? sesuai konteks
+2. Kapitalkan awal kalimat dan nama diri (orang, tempat, merek)
 
-ATURAN KERAS — TIDAK BOLEH DILANGGAR:
-- DILARANG mengubah, menambah, memindahkan, atau menghapus kata apapun
-- DILARANG mengubah tanda baca selain \\
-- Setiap \\ WAJIB diganti dengan salah satu dari: . , ! ? — tidak boleh dihapus atau dibiarkan
-- Jika ragu antara . / ! / ?, pilih titik (.)
-- Output hanya teks hasil, TANPA penjelasan, TANPA komentar apapun
+LARANGAN:
+- Jangan ubah, tambah, atau hapus kata apapun
+- Jangan ubah ejaan kata — baku maupun tidak baku, biarkan apa adanya
+- Jangan sentuh tanda baca selain \\
+- Setiap \\ WAJIB diganti, tidak boleh dihapus atau dilewati
+- Jika ragu pilih titik (.)
 
-CONTOH:
-Input:  aku lapar\\ mau makan\\ kamu mau ikut\\
-Output: Aku lapar, mau makan. Kamu mau ikut?`
+Output: teks hasil saja, tanpa komentar.
 
-type Provider = "groq" | "google"
+Contoh:
+Input:  gue lagi di warung\\ mau beli nasi uduk\\ abis deh\\
+Output: Gue lagi di warung, mau beli nasi uduk. Abis deh.`
+
+type Provider = "groq" | "google" | "aiml" | "openrouter"
 
 const MODELS = {
   groq: "llama-3.3-70b-versatile",
-  google: "gemini-2.0-flash",
+  google: "gemini-2.5-flash-lite",
+  aiml: "google/gemma-3n-e4b-it",
+  openrouter: "meta-llama/llama-3.3-70b-instruct:free",
 } as const
 
 export async function POST(request: Request) {
@@ -50,6 +54,26 @@ export async function POST(request: Request) {
 
       const google = createGoogleGenerativeAI({ apiKey });
       model = google(MODELS.google);
+    } else if (provider === "aiml") {
+      const apiKey = process.env.AIML_API_KEY;
+      if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
+        return Response.json({ error: "AIML API Key belum dikonfigurasi." }, { status: 500 });
+      }
+      const aiml = createOpenAI({
+        apiKey,
+        baseURL: "https://api.aimlapi.com/v1",
+      });
+      model = aiml(MODELS.aiml);
+    } else if (provider === "openrouter") {
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
+        return Response.json({ error: "OpenRouter API Key belum dikonfigurasi." }, { status: 500 });
+      }
+      const openrouter = createOpenAI({
+        apiKey,
+        baseURL: "https://openrouter.ai/api/v1",
+      });
+      model = openrouter(MODELS.openrouter);
     } else {
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey || apiKey.includes("your_") || apiKey.includes("_here")) {
@@ -63,7 +87,7 @@ export async function POST(request: Request) {
       model,
       system: PROMPT_SYSTEM,
       prompt: text,
-      maxOutputTokens: 1000,
+      maxTokens: 1000,
       temperature: 0.1,
     })
 

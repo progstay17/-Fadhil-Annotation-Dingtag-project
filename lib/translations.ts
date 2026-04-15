@@ -3,7 +3,7 @@ export type Language = "id" | "en" | "zh"
 export const translations = {
   id: {
     // Header
-    appName: "// transkripsi.tool",
+    appName: "DingTag Annotation tool",
     tagline: "tanda baca + EYD otomatis",
     
     // Form
@@ -16,6 +16,7 @@ export const translations = {
     
     // Buttons
     processButton: "Proses",
+    flatTextButton: "Flat Teks",
     processingButton: "Memproses...",
     copyButton: "salin",
     editButton: "edit ulang",
@@ -42,6 +43,8 @@ export const translations = {
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
     modelGoogle: "Google Gemini (Gratis & Cepat)",
+    modelAiml: "Gemma 3 (AIML API)",
+    modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
     
     // Footer
     footerInstructions: "cara pakai: ketik transkripsi → tandai jeda suara dengan",
@@ -50,7 +53,7 @@ export const translations = {
   },
   en: {
     // Header
-    appName: "// transcription.tool",
+    appName: "DingTag Annotation tool",
     tagline: "auto punctuation + grammar",
     
     // Form
@@ -63,6 +66,7 @@ export const translations = {
     
     // Buttons
     processButton: "Process",
+    flatTextButton: "Flat Text",
     processingButton: "Processing...",
     copyButton: "copy",
     editButton: "edit again",
@@ -89,6 +93,8 @@ export const translations = {
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
     modelGoogle: "Google Gemini (Free & Fast)",
+    modelAiml: "Gemma 3 (AIML API)",
+    modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
     
     // Footer
     footerInstructions: "how to use: type transcription → mark pauses with",
@@ -97,7 +103,7 @@ export const translations = {
   },
   zh: {
     // Header
-    appName: "// 转录工具",
+    appName: "DingTag Annotation tool",
     tagline: "自动标点 + 语法校正",
     
     // Form
@@ -110,6 +116,7 @@ export const translations = {
     
     // Buttons
     processButton: "处理",
+    flatTextButton: "平展文本",
     processingButton: "处理中...",
     copyButton: "复制",
     editButton: "重新编辑",
@@ -136,6 +143,8 @@ export const translations = {
     modelLabel: "模型",
     modelGroq: "Groq (Llama 3.3)",
     modelGoogle: "Google Gemini (免费且快速)",
+    modelAiml: "Gemma 3 (AIML API)",
+    modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
     
     // Footer
     footerInstructions: "使用方法：输入转录内容 → 用",
