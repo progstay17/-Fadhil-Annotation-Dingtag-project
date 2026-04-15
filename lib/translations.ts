@@ -13,6 +13,7 @@ export const translations = {
     inputPlaceholder: "mbaknya bilang akun dananya kena freeze\\ lah gimana coba gue...",
     outputLabel: "hasil",
     outputPlaceholder: "hasil akan muncul di sini...",
+    charCount: "karakter",
     
     // Buttons
     processButton: "Proses",
@@ -90,6 +91,7 @@ export const translations = {
     inputPlaceholder: "she said the account got frozen\\ so what am I supposed to do now...",
     outputLabel: "result",
     outputPlaceholder: "result will appear here...",
+    charCount: "characters",
     
     // Buttons
     processButton: "Process",
@@ -167,6 +169,7 @@ export const translations = {
     inputPlaceholder: "她说账户被冻结了\\ 那我现在该怎么办...",
     outputLabel: "结果",
     outputPlaceholder: "结果将显示在这里...",
+    charCount: "字符",
     
     // Buttons
     processButton: "处理",

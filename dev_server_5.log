@@ -132,3 +132,11 @@ https://nextjs.org/docs/messages/module-not-found
  GET / 200 in 1875ms (next.js: 1418ms, application-code: 458ms)
 [browser] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
 [browser] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+ GET / 200 in 700ms (next.js: 172ms, application-code: 528ms)
+[browser] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+[browser] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+ GET / 200 in 174ms (next.js: 9ms, application-code: 165ms)
+ GET / 200 in 75ms (next.js: 6ms, application-code: 69ms)
+ POST /api/transcribe 500 in 440ms (next.js: 405ms, application-code: 34ms)
+ GET / 200 in 79ms (next.js: 5ms, application-code: 75ms)
+ POST /api/transcribe 500 in 13ms (next.js: 4ms, application-code: 9ms)

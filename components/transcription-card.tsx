@@ -3,7 +3,7 @@
 import { ReactNode } from "react"
 
 interface TranscriptionCardProps {
-  label: string
+  label: ReactNode
   hint?: ReactNode
   children: ReactNode
   actions?: ReactNode
