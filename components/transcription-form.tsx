@@ -1,13 +1,30 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { TranscriptionCard } from "./transcription-card"
 import { StatusIndicator, StatusState } from "./status-indicator"
 import { calculateScoring, ScoringResult } from "@/lib/scoring"
 import { Kbd } from "@/components/ui/kbd"
 import { useLanguage } from "./language-provider"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 
 type Provider = "groq" | "google" | "aiml" | "openrouter"
+
+const PROMPT_BIASA = `Kamu editor transkripsi audio. Tugasmu adalah memperbaiki tanda baca dan EYD (Ejaan yang Disempurnakan) pada teks transkripsi.
+
+Tugas:
+1. Tambahkan tanda baca (titik, koma, tanya, seru) yang sesuai dengan konteks.
+2. Perbaiki kapitalisasi di awal kalimat dan nama diri.
+3. Jangan mengubah, menambah, atau menghapus kata-kata asli.
+4. Jangan memberikan penjelasan atau komentar.
+
+Output: teks hasil saja.`
 
 const PROMPT_1 = `Kamu editor transkripsi audio. Lakukan DUA hal saja:
 1. Ganti setiap \\ dengan . , ! atau ? sesuai konteks
@@ -25,6 +42,19 @@ Output: teks hasil saja, tanpa komentar.
 Contoh:
 Input:  gue lagi di warung\\ mau beli nasi uduk\\ abis deh\\
 Output: Gue lagi di warung, mau beli nasi uduk. Abis deh.`
+
+const INSERT_PROMPT_TEMPLATE = `Perbaiki teks input. Semua output dalam satu paragraf.
+
+ATURAN:
+- Pertahankan gaya santai (gue, lu, nggak, dll)
+- Perbaiki typo, kapitalkan nama diri dan merek
+- Gabungkan kata ulang dengan hubung (pelan pelan → pelan-pelan)
+- Tambah atau ganti tanda baca seperlunya agar enak dibaca
+- Hapus dash (—), ganti dengan titik atau koma
+- Akhir kalimat hanya . ? !
+- Pertahankan kalimat menggantung jika ada di input
+
+Output: teks hasil saja, tanpa komentar.`
 
 function getPrompt2(original: string, hasil: string, masalah: string[]) {
   return `Kamu adalah asisten editor transkripsi. Tugasmu adalah memperbaiki hasil transkripsi sebelumnya yang memiliki kesalahan posisi tanda baca.
@@ -201,11 +231,6 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
     }
   })
 
-  // Rule 6: Between two words: Hyphen (-) only if NO punctuation, Comma (,) if IS punctuation
-  // Wait, Rule 5 says \ between repeated words means comma/punct, not hyphen.
-  // We'll run a pass to ensure no extra hyphens were introduced by AI if a \ was there.
-  // Actually the fixer's primary job is punctuation placement.
-
   let result = finalWordsArray.join(" ")
 
   // FINAL CLEANUP PASS
@@ -251,7 +276,7 @@ export function TranscriptionForm() {
   const [scoring, setScoring] = useState<ScoringResult | null>(null)
   const [showDiff, setShowDiff] = useState(false)
   const [provider, setProvider] = useState<Provider>("google")
-  const [version, setVersion] = useState<"v1" | "v2.2">("v1")
+  const [version, setVersion] = useState<"biasa" | "v1" | "v2.2">("biasa")
   const [status, setStatus] = useState<{ state: StatusState; messageKey: string }>({
     state: "idle",
     messageKey: "statusReady",
@@ -273,6 +298,56 @@ export function TranscriptionForm() {
     wordCountMismatch: false,
   })
   const [showFixerDiff, setShowFixerDiff] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
+
+  useEffect(() => {
+    const hasSeen = localStorage.getItem("tb_tutorial_seen")
+    if ((version === "v1" || version === "v2.2") && !hasSeen) {
+      setShowTutorial(true)
+    }
+  }, [version])
+
+  const dismissTutorial = () => {
+    localStorage.setItem("tb_tutorial_seen", "true")
+    setShowTutorial(false)
+  }
+
+  const clearAll = useCallback(() => {
+    setInput("")
+    setResult("")
+    setScoring(null)
+    setShowDiff(false)
+    setStatus({ state: "idle", messageKey: "statusReady" })
+    setV2Status({ state: "idle", retryCount: 0, masalah: [], totalSlashes: 0, fixerChanges: [], wordCountMismatch: false })
+    setShowFixerDiff(false)
+  }, [])
+
+  const pasteFromClipboard = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      setInput(text)
+      setStatus({ state: "success", messageKey: "statusMoved" })
+      setTimeout(() => setStatus({ state: "idle", messageKey: "statusReady" }), 1500)
+    } catch {
+      setStatus({ state: "error", messageKey: "statusCopyFailed" })
+    }
+  }, [])
+
+  const [promptCopied, setPromptCopied] = useState(false)
+  const insertPrompt = useCallback(async () => {
+    if (!input.trim()) {
+      setStatus({ state: "error", messageKey: "statusEmptyInput" })
+      return
+    }
+    const fullText = `${INSERT_PROMPT_TEMPLATE}\n\n${input}`
+    try {
+      await navigator.clipboard.writeText(fullText)
+      setPromptCopied(true)
+      setTimeout(() => setPromptCopied(false), 1500)
+    } catch {
+      setStatus({ state: "error", messageKey: "statusCopyFailed" })
+    }
+  }, [input])
 
   const process = useCallback(async () => {
     if (!input.trim()) {
@@ -280,7 +355,8 @@ export function TranscriptionForm() {
       return
     }
 
-    const normalizedInputText = normalizeInput(input.trim())
+    const isBackslashMode = version === "v1" || version === "v2.2"
+    const normalizedInputText = isBackslashMode ? normalizeInput(input.trim()) : input.trim()
 
     setIsProcessing(true)
     setStatus({ state: "loading", messageKey: "statusProcessing" })
@@ -298,7 +374,6 @@ export function TranscriptionForm() {
 
     try {
       let currentResult = ""
-      let currentScoring: ScoringResult | null = null
       let currentRetry = 0
       let isValid = false
       let currentMasalah: string[] = []
@@ -310,7 +385,7 @@ export function TranscriptionForm() {
         body: JSON.stringify({
           text: normalizedInputText,
           provider,
-          systemPrompt: PROMPT_1
+          systemPrompt: version === "biasa" ? PROMPT_BIASA : PROMPT_1
         }),
       })
 
@@ -318,7 +393,6 @@ export function TranscriptionForm() {
       if (!response.ok) throw new Error(data.error || t("statusError"))
 
       currentResult = stripExtraText(data.result)
-      currentScoring = data.scoring
 
       if (version === "v2.2") {
         const validation = validator(normalizedInputText, currentResult)
@@ -344,9 +418,8 @@ export function TranscriptionForm() {
           if (!retryResponse.ok) throw new Error(retryData.error || t("statusError"))
 
           currentResult = stripExtraText(retryData.result)
-          currentScoring = retryData.scoring
 
-          const retryValidation = validator(input.trim(), currentResult)
+          const retryValidation = validator(normalizedInputText, currentResult)
           isValid = retryValidation.ok
           currentMasalah = retryValidation.masalah
         }
@@ -376,7 +449,7 @@ export function TranscriptionForm() {
         })
       }
 
-      const finalScoring = calculateScoring(normalizedInputText, currentResult)
+      const finalScoring = isBackslashMode ? calculateScoring(normalizedInputText, currentResult) : null
       setResult(currentResult)
       setScoring(finalScoring)
       setStatus({ state: "success", messageKey: "statusDone" })
@@ -418,16 +491,6 @@ export function TranscriptionForm() {
     setStatus({ state: "idle", messageKey: "statusMoved" })
   }, [result])
 
-  const clearAll = useCallback(() => {
-    setInput("")
-    setResult("")
-    setScoring(null)
-    setShowDiff(false)
-    setStatus({ state: "idle", messageKey: "statusReady" })
-    setV2Status({ state: "idle", retryCount: 0, masalah: [], totalSlashes: 0, fixerChanges: [], wordCountMismatch: false })
-    setShowFixerDiff(false)
-  }, [])
-
   const flatten = useCallback(() => {
     if (!input.trim()) return
     const flattened = input
@@ -466,9 +529,27 @@ export function TranscriptionForm() {
       <TranscriptionCard
         label={t("inputLabel")}
         hint={
-          <span>
-            {t("inputHint")} <Kbd>\</Kbd> {t("inputHintSuffix")}
-          </span>
+          version !== "biasa" && (
+            <span>
+              {t("inputHint")} <Kbd>\\</Kbd> {t("inputHintSuffix")}
+            </span>
+          )
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={pasteFromClipboard}
+              className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold"
+            >
+              {t("pasteButton")}
+            </button>
+            <button
+              onClick={clearAll}
+              className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold"
+            >
+              {t("clearButton")}
+            </button>
+          </div>
         }
       >
         <textarea
@@ -485,7 +566,23 @@ export function TranscriptionForm() {
           <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider font-semibold">
             {t("modeLabel")}
           </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button
+              onClick={() => setVersion("biasa")}
+              disabled={isProcessing}
+              className={`flex flex-col items-start p-3 rounded-md border transition-all text-left ${
+                version === "biasa"
+                  ? "bg-primary/5 border-primary ring-1 ring-primary"
+                  : "bg-card border-border hover:bg-secondary/50"
+              } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <span className="font-mono text-sm font-bold flex items-center gap-2">
+                {t("biasaTitle")}
+              </span>
+              <span className="font-mono text-[10px] text-muted-foreground mt-1">
+                {t("biasaDesc")}
+              </span>
+            </button>
             <button
               onClick={() => setVersion("v1")}
               disabled={isProcessing}
@@ -546,13 +643,23 @@ export function TranscriptionForm() {
         >
           {isProcessing ? t("processingButton") : `${t("processButton")} \u2192`}
         </button>
-        <button
-          onClick={flatten}
-          disabled={isProcessing || !input.trim()}
-          className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-        >
-          {t("flatTextButton")}
-        </button>
+        {version === "biasa" ? (
+          <button
+            onClick={insertPrompt}
+            disabled={isProcessing || !input.trim()}
+            className="font-mono text-xs font-medium bg-secondary text-foreground border border-border px-4 py-2.5 rounded-md hover:bg-secondary/80 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap"
+          >
+            {promptCopied ? t("promptCopied") : t("insertPromptButton")}
+          </button>
+        ) : (
+          <button
+            onClick={flatten}
+            disabled={isProcessing || !input.trim()}
+            className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            {t("flatTextButton")}
+          </button>
+        )}
       </div>
       </div>
 
@@ -599,14 +706,14 @@ export function TranscriptionForm() {
         }
         actions={
           result && (
-            <>
+            <div className="flex items-center gap-2">
               {scoring && (
                 <button
                   onClick={() => setShowDiff(!showDiff)}
-                  className={`font-mono text-[11px] border px-3 py-1.5 rounded-md transition-colors ${
+                  className={`font-mono text-[10px] border px-2 py-1 rounded transition-colors uppercase tracking-tighter font-bold ${
                     showDiff
                       ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-secondary text-muted-foreground border-border hover:text-foreground"
+                      : "bg-secondary text-muted-foreground border-border hover:text-foreground hover:border-muted-foreground"
                   }`}
                 >
                   {t("showDiff")}
@@ -614,23 +721,17 @@ export function TranscriptionForm() {
               )}
               <button
                 onClick={copyToClipboard}
-                className="font-mono text-[11px] bg-secondary text-muted-foreground border border-border px-3 py-1.5 rounded-md hover:text-foreground hover:border-muted-foreground transition-colors"
+                className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold"
               >
                 {t("copyButton")}
               </button>
               <button
                 onClick={moveToInput}
-                className="font-mono text-[11px] bg-secondary text-muted-foreground border border-border px-3 py-1.5 rounded-md hover:text-foreground hover:border-muted-foreground transition-colors"
+                className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold"
               >
                 {t("editButton")}
               </button>
-              <button
-                onClick={clearAll}
-                className="font-mono text-[11px] bg-secondary text-muted-foreground border border-border px-3 py-1.5 rounded-md hover:text-foreground hover:border-muted-foreground transition-colors"
-              >
-                {t("clearButton")}
-              </button>
-            </>
+            </div>
           )
         }
       >
@@ -750,15 +851,43 @@ export function TranscriptionForm() {
       <StatusIndicator state={status.state} messageKey={status.messageKey} />
 
       <footer className="font-mono text-[11px] text-muted-foreground leading-relaxed mt-2">
-        <p>
-          {t("footerInstructions")}{" "}
-          <span className="inline-block bg-secondary border border-border rounded px-1.5 text-primary">
-            \
-          </span>{" "}
-          {t("footerInstructionsSuffix")}
-        </p>
+        {version !== "biasa" && (
+          <p>
+            {t("footerInstructions")}{" "}
+            <span className="inline-block bg-secondary border border-border rounded px-1.5 text-primary">
+              \\
+            </span>{" "}
+            {t("footerInstructionsSuffix")}
+          </p>
+        )}
         <p>{t("footerPoweredBy")}</p>
       </footer>
+
+      <Dialog open={showTutorial} onOpenChange={setShowTutorial}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-primary flex items-center gap-2">
+              <span className="p-1 rounded bg-primary/10 text-primary">
+                \\
+              </span>
+              {t("tutorialTitle")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="font-mono text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+              {t("tutorialBody")}
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              onClick={dismissTutorial}
+              className="w-full font-mono text-sm font-medium bg-primary text-primary-foreground px-4 py-2.5 rounded-md hover:bg-primary/90 transition-all"
+            >
+              {t("tutorialButton")}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
