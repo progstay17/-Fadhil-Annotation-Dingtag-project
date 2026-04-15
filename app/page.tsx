@@ -12,13 +12,10 @@ export default function Home() {
       <header className="w-full max-w-3xl mb-8 flex flex-col gap-6">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1">
-            <pre className="font-mono text-[10px] leading-[1.2] text-primary">
-{`      A I T
-  _ _ _ _ _ _ _
- /   \\  | |  | |
-/ /_\\ \\ | |  | |
-|  _  | | |  | |
-|_| |_| |_|  |_|`}
+            <pre className="font-mono text-[11px] leading-[1.0] text-primary font-bold">
+{`   /\\    | |  |￣￣|
+  /--\\   | |    | |
+ /_/\\_\\  |_|    |_|`}
             </pre>
             <p className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground font-bold">
               ALPHA INNOVATION TECHNOLOGY
