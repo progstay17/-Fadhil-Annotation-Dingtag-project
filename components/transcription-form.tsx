@@ -662,6 +662,7 @@ export function TranscriptionForm() {
         )}
       </div>
       </div>
+      </div>
 
       <div className="w-full h-px bg-border" />
 
