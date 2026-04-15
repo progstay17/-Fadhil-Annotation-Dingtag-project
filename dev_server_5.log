@@ -128,3 +128,7 @@ Import traces:
     ./app/page.tsx [Server Component]
 
 https://nextjs.org/docs/messages/module-not-found
+✓ Compiled in 2.7s
+ GET / 200 in 1875ms (next.js: 1418ms, application-code: 458ms)
+[browser] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+[browser] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.

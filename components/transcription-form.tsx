@@ -531,7 +531,7 @@ export function TranscriptionForm() {
         hint={
           version !== "biasa" && (
             <span>
-              {t("inputHint")} <Kbd>\\</Kbd> {t("inputHintSuffix")}
+              {t("inputHint")} <Kbd>{"\\"}</Kbd> {t("inputHintSuffix")}
             </span>
           )
         }
@@ -539,13 +539,13 @@ export function TranscriptionForm() {
           <div className="flex items-center gap-2">
             <button
               onClick={pasteFromClipboard}
-              className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold"
+              className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer"
             >
               {t("pasteButton")}
             </button>
             <button
               onClick={clearAll}
-              className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold"
+              className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer"
             >
               {t("clearButton")}
             </button>
@@ -570,7 +570,7 @@ export function TranscriptionForm() {
             <button
               onClick={() => setVersion("biasa")}
               disabled={isProcessing}
-              className={`flex flex-col items-start p-3 rounded-md border transition-all text-left ${
+              className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
                 version === "biasa"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
                   : "bg-card border-border hover:bg-secondary/50"
@@ -586,7 +586,7 @@ export function TranscriptionForm() {
             <button
               onClick={() => setVersion("v1")}
               disabled={isProcessing}
-              className={`flex flex-col items-start p-3 rounded-md border transition-all text-left ${
+              className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
                 version === "v1"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
                   : "bg-card border-border hover:bg-secondary/50"
@@ -602,7 +602,7 @@ export function TranscriptionForm() {
             <button
               onClick={() => setVersion("v2.2")}
               disabled={isProcessing}
-              className={`flex flex-col items-start p-3 rounded-md border transition-all text-left ${
+              className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
                 version === "v2.2"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
                   : "bg-card border-border hover:bg-secondary/50"
@@ -639,7 +639,7 @@ export function TranscriptionForm() {
         <button
           onClick={process}
           disabled={isProcessing}
-          className="font-mono text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-md hover:bg-primary/90 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap"
+          className="font-mono text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-md hover:bg-primary/90 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap cursor-pointer"
         >
           {isProcessing ? t("processingButton") : `${t("processButton")} \u2192`}
         </button>
@@ -647,7 +647,7 @@ export function TranscriptionForm() {
           <button
             onClick={insertPrompt}
             disabled={isProcessing || !input.trim()}
-            className="font-mono text-xs font-medium bg-secondary text-foreground border border-border px-4 py-2.5 rounded-md hover:bg-secondary/80 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap"
+            className="font-mono text-xs font-medium bg-secondary text-foreground border border-border px-4 py-2.5 rounded-md hover:bg-secondary/80 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap cursor-pointer"
           >
             {promptCopied ? t("promptCopied") : t("insertPromptButton")}
           </button>
@@ -655,12 +655,11 @@ export function TranscriptionForm() {
           <button
             onClick={flatten}
             disabled={isProcessing || !input.trim()}
-            className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer"
           >
             {t("flatTextButton")}
           </button>
         )}
-      </div>
       </div>
       </div>
 
@@ -711,7 +710,7 @@ export function TranscriptionForm() {
               {scoring && (
                 <button
                   onClick={() => setShowDiff(!showDiff)}
-                  className={`font-mono text-[10px] border px-2 py-1 rounded transition-colors uppercase tracking-tighter font-bold ${
+                  className={`font-mono text-[10px] border px-2 py-1 rounded transition-colors uppercase tracking-tighter font-bold cursor-pointer ${
                     showDiff
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-secondary text-muted-foreground border-border hover:text-foreground hover:border-muted-foreground"
@@ -722,13 +721,13 @@ export function TranscriptionForm() {
               )}
               <button
                 onClick={copyToClipboard}
-                className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold"
+                className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer"
               >
                 {t("copyButton")}
               </button>
               <button
                 onClick={moveToInput}
-                className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold"
+                className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer"
               >
                 {t("editButton")}
               </button>
@@ -790,7 +789,7 @@ export function TranscriptionForm() {
         <div className="bg-secondary/50 border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => setShowFixerDiff(!showFixerDiff)}
-            className="w-full px-4 py-2 flex items-center justify-between hover:bg-secondary transition-colors"
+            className="w-full px-4 py-2 flex items-center justify-between hover:bg-secondary transition-colors cursor-pointer"
           >
             <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               {t("v2FixerTitle")} ({v2Status.fixerChanges.length})
@@ -856,7 +855,7 @@ export function TranscriptionForm() {
           <p>
             {t("footerInstructions")}{" "}
             <span className="inline-block bg-secondary border border-border rounded px-1.5 text-primary">
-              \\
+              {"\\"}
             </span>{" "}
             {t("footerInstructionsSuffix")}
           </p>
@@ -869,7 +868,7 @@ export function TranscriptionForm() {
           <DialogHeader>
             <DialogTitle className="font-mono text-primary flex items-center gap-2">
               <span className="p-1 rounded bg-primary/10 text-primary">
-                \\
+                {"\\"}
               </span>
               {t("tutorialTitle")}
             </DialogTitle>
@@ -882,7 +881,7 @@ export function TranscriptionForm() {
           <DialogFooter>
             <button
               onClick={dismissTutorial}
-              className="w-full font-mono text-sm font-medium bg-primary text-primary-foreground px-4 py-2.5 rounded-md hover:bg-primary/90 transition-all"
+              className="w-full font-mono text-sm font-medium bg-primary text-primary-foreground px-4 py-2.5 rounded-md hover:bg-primary/90 transition-all cursor-pointer"
             >
               {t("tutorialButton")}
             </button>
