@@ -546,7 +546,7 @@ export function TranscriptionForm() {
         hint={
           version !== "biasa" && (
             <span>
-              {t("inputHint")} <Kbd>{"\\"}</Kbd> {t("inputHintSuffix")}
+              {t("inputHint")} <Kbd>\</Kbd> {t("inputHintSuffix")}
             </span>
           )
         }
@@ -783,15 +783,14 @@ export function TranscriptionForm() {
             </span>
           )}
 
-          {(processTime || (version === "v2.2" && v2Status.state !== "idle")) && (
+          {(isProcessing || processTime || (version === "v2.2" && v2Status.state !== "idle")) && (
             <div className="absolute bottom-0 left-0 right-0 pt-2 border-t border-border/50 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 <span className="text-[10px] text-muted-foreground italic">
-                  {version === "v2.2" && v2Status.state !== "idle" ? (
+                  {isProcessing ? (
+                    <>{t("statusProcessing")} {version === "v2.2" && v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/2</span>}</>
+                  ) : version === "v2.2" && v2Status.state !== "idle" ? (
                     <>
-                      {v2Status.state === "loading" && (
-                        <>{t("statusProcessing")} {v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/2</span>}</>
-                      )}
                       {v2Status.state === "valid" && `selesai. semua ${v2Status.totalSlashes} tanda baca sesuai posisi.`}
                       {v2Status.state === "fixed_ai" && `selesai setelah ${v2Status.retryCount}x fix otomatis.`}
                       {v2Status.state === "fixed_algo" && `selesai. algorithmic fixer digunakan.`}
@@ -799,12 +798,12 @@ export function TranscriptionForm() {
                       {v2Status.state === "error" && `perlu review manual: ${v2Status.masalah[0]}`}
                     </>
                   ) : (
-                    <span>{t("statusDone")}</span>
+                    <span>{status.state === "error" ? status.messageKey : t("statusDone")}</span>
                   )}
                 </span>
-                {processTime && (
-                  <span className="text-[9px] font-mono text-muted-foreground/50 tabular-nums">
-                    {processTime}s
+                {!isProcessing && processTime && (
+                  <span className="text-[9px] font-mono text-muted-foreground/40 tabular-nums">
+                    · {processTime}s
                   </span>
                 )}
               </div>
@@ -888,7 +887,7 @@ export function TranscriptionForm() {
           <p>
             {t("footerInstructions")}{" "}
             <span className="inline-block bg-secondary border border-border rounded px-1.5 text-primary">
-              {"\\"}
+              \
             </span>{" "}
             {t("footerInstructionsSuffix")}
           </p>
@@ -901,7 +900,7 @@ export function TranscriptionForm() {
           <DialogHeader>
             <DialogTitle className="font-mono text-primary flex items-center gap-2">
               <span className="p-1 rounded bg-primary/10 text-primary">
-                {"\\"}
+                \
               </span>
               {t("tutorialTitle")}
             </DialogTitle>

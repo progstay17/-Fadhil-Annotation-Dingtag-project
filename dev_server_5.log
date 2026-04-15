@@ -140,3 +140,58 @@ https://nextjs.org/docs/messages/module-not-found
  POST /api/transcribe 500 in 440ms (next.js: 405ms, application-code: 34ms)
  GET / 200 in 79ms (next.js: 5ms, application-code: 75ms)
  POST /api/transcribe 500 in 13ms (next.js: 4ms, application-code: 9ms)
+ GET / 200 in 555ms (next.js: 120ms, application-code: 435ms)
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectBoundary>
+      <RedirectErrorBoundary router={{...}}>
+        <InnerLayoutRouter url="/" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+          <SegmentViewNode type="page" pagePath="page.tsx">
+            <SegmentTrieNode>
+            <ClientPageRoot Component={function Home} serverProvidedParams={{...}}>
+              <Home params={Promise} searchParams={Promise}>
+                <main className="min-h-scre...">
+                  <header>
+                  <TranscriptionForm>
+                    <div className="w-full max...">
+                      <TranscriptionCard label={<div>} hint={false} actions={<div>}>
+                        <div className="w-full bg-...">
+                          <div className="px-4 py-2....">
+                            <div className="flex items...">
++                             <div
++                               className="font-mono text-[11px] text-muted-foreground uppercase tracking-wider whites..."
++                             >
+-                             <span
+-                               className="font-mono text-[11px] text-muted-foreground uppercase tracking-wider whites..."
+-                             >
+                            ...
+                          ...
+                      ...
+                  ...
+          ...
+        ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at TranscriptionCard (components/transcription-card.tsx:22:11)
+    at TranscriptionForm (components/transcription-form.tsx:537:7)
+    at Home (app/page.tsx:44:7)
+  20 |       <div className="px-4 py-2.5 border-b border-border flex items-center justify-between...
+  21 |         <div className="flex items-center gap-4 min-w-0 flex-1">
+> 22 |           <div className="font-mono text-[11px] text-muted-foreground uppercase tracking-w...
+     |           ^
+  23 |             {label}
+  24 |           </div>
+  25 |           {hint && (
+ POST /api/transcribe 500 in 34ms (next.js: 15ms, application-code: 20ms)
