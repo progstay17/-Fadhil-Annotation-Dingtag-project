@@ -6,13 +6,13 @@
 ▲ Next.js 16.2.0 (Turbopack)
 - Local:         http://localhost:3001
 - Network:       http://192.168.0.2:3001
-✓ Ready in 1744ms
+✓ Ready in 717ms
 ⨯ Another next dev server is already running.
 
 - Local:        http://localhost:3000
-- PID:          318175
+- PID:          683860
 - Dir:          /app
 - Log:          .next/dev/logs/next-development.log
 
-Run kill 318175 to stop it.
+Run kill 683860 to stop it.
 [?25h
