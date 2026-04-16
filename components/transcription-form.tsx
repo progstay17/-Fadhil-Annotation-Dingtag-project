@@ -273,6 +273,7 @@ export function TranscriptionForm() {
   const { t } = useLanguage()
   const [input, setInput] = useState("")
   const [result, setResult] = useState("")
+  const [processTime, setProcessTime] = useState<string | null>(null)
   const [scoring, setScoring] = useState<ScoringResult | null>(null)
   const [showDiff, setShowDiff] = useState(false)
   const [provider, setProvider] = useState<Provider>("google")
@@ -320,6 +321,7 @@ export function TranscriptionForm() {
     setStatus({ state: "idle", messageKey: "statusReady" })
     setV2Status({ state: "idle", retryCount: 0, masalah: [], totalSlashes: 0, fixerChanges: [], wordCountMismatch: false })
     setShowFixerDiff(false)
+    setProcessTime(null)
   }, [])
 
   const pasteFromClipboard = useCallback(async () => {
@@ -355,12 +357,14 @@ export function TranscriptionForm() {
       return
     }
 
+    const start = performance.now()
     const isBackslashMode = version === "v1" || version === "v2.2"
     const normalizedInputText = isBackslashMode ? normalizeInput(input.trim()) : input.trim()
 
     setIsProcessing(true)
     setStatus({ state: "loading", messageKey: "statusProcessing" })
     setResult("")
+    setProcessTime(null)
     setShowFixerDiff(false)
     const totalSlashes = (normalizedInputText.match(/\\/g) || []).length
     setV2Status({
@@ -450,10 +454,14 @@ export function TranscriptionForm() {
       }
 
       const finalScoring = isBackslashMode ? calculateScoring(normalizedInputText, currentResult) : null
+      const elapsed = ((performance.now() - start) / 1000).toFixed(1)
+      setProcessTime(elapsed)
       setResult(currentResult)
       setScoring(finalScoring)
       setStatus({ state: "success", messageKey: "statusDone" })
     } catch (error) {
+      const elapsed = ((performance.now() - start) / 1000).toFixed(1)
+      setProcessTime(elapsed)
       const message = error instanceof Error ? error.message : t("statusError")
       setResult("")
       // Truncate long error messages for display
@@ -527,11 +535,18 @@ export function TranscriptionForm() {
   return (
     <div className="w-full max-w-3xl flex flex-col gap-4">
       <TranscriptionCard
-        label={t("inputLabel")}
+        label={
+          <div className="flex items-center gap-2">
+            <span>{t("inputLabel")}</span>
+            <span className="text-[9px] text-muted-foreground/60 normal-case">
+              {input.length} {t("charCount")}
+            </span>
+          </div>
+        }
         hint={
           version !== "biasa" && (
             <span>
-              {t("inputHint")} <Kbd>{"\\"}</Kbd> {t("inputHintSuffix")}
+              {t("inputHint")} <Kbd>\</Kbd> {t("inputHintSuffix")}
             </span>
           )
         }
@@ -666,7 +681,14 @@ export function TranscriptionForm() {
       <div className="w-full h-px bg-border" />
 
       <TranscriptionCard
-        label={t("outputLabel")}
+        label={
+          <div className="flex items-center gap-2">
+            <span>{t("outputLabel")}</span>
+            <span className="text-[9px] text-muted-foreground/60 normal-case">
+              {result.length} {t("charCount")}
+            </span>
+          </div>
+        }
         hint={
           version === "v2.2" && v2Status.state !== "idle" && (
             <div className="flex items-center gap-2">
@@ -761,21 +783,31 @@ export function TranscriptionForm() {
             </span>
           )}
 
-          {version === "v2.2" && v2Status.state !== "idle" && (
+          {(isProcessing || processTime || (version === "v2.2" && v2Status.state !== "idle")) && (
             <div className="absolute bottom-0 left-0 right-0 pt-2 border-t border-border/50 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 <span className="text-[10px] text-muted-foreground italic">
-                  {v2Status.state === "loading" && (
-                    <>{t("statusProcessing")} {v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/2</span>}</>
+                  {isProcessing ? (
+                    <>{t("statusProcessing")} {version === "v2.2" && v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/2</span>}</>
+                  ) : version === "v2.2" && v2Status.state !== "idle" ? (
+                    <>
+                      {v2Status.state === "valid" && `selesai. semua ${v2Status.totalSlashes} tanda baca sesuai posisi.`}
+                      {v2Status.state === "fixed_ai" && `selesai setelah ${v2Status.retryCount}x fix otomatis.`}
+                      {v2Status.state === "fixed_algo" && `selesai. algorithmic fixer digunakan.`}
+                      {v2Status.state === "fixed_warning" && `selesai. algorithmic fixer digunakan dengan peringatan.`}
+                      {v2Status.state === "error" && `perlu review manual: ${v2Status.masalah[0]}`}
+                    </>
+                  ) : (
+                    <span>{status.state === "error" ? status.messageKey : t("statusDone")}</span>
                   )}
-                  {v2Status.state === "valid" && `selesai. semua ${v2Status.totalSlashes} tanda baca sesuai posisi.`}
-                  {v2Status.state === "fixed_ai" && `selesai setelah ${v2Status.retryCount}x fix otomatis.`}
-                  {v2Status.state === "fixed_algo" && `selesai. algorithmic fixer digunakan.`}
-                  {v2Status.state === "fixed_warning" && `selesai. algorithmic fixer digunakan dengan peringatan.`}
-                  {v2Status.state === "error" && `perlu review manual: ${v2Status.masalah[0]}`}
                 </span>
+                {!isProcessing && processTime && (
+                  <span className="text-[9px] font-mono text-muted-foreground/40 tabular-nums">
+                    · {processTime}s
+                  </span>
+                )}
               </div>
-              {v2Status.wordCountMismatch && (
+              {version === "v2.2" && v2Status.wordCountMismatch && (
                 <span className="text-[10px] text-orange-600 font-bold uppercase tracking-tight">
                   {t("v2Warning")}
                 </span>
@@ -855,7 +887,7 @@ export function TranscriptionForm() {
           <p>
             {t("footerInstructions")}{" "}
             <span className="inline-block bg-secondary border border-border rounded px-1.5 text-primary">
-              {"\\"}
+              \
             </span>{" "}
             {t("footerInstructionsSuffix")}
           </p>
@@ -868,7 +900,7 @@ export function TranscriptionForm() {
           <DialogHeader>
             <DialogTitle className="font-mono text-primary flex items-center gap-2">
               <span className="p-1 rounded bg-primary/10 text-primary">
-                {"\\"}
+                \
               </span>
               {t("tutorialTitle")}
             </DialogTitle>
