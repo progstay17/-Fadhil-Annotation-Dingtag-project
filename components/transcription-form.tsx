@@ -87,7 +87,7 @@ function normalizeInput(text: string): string {
     .replace(/\\\\+/g, "\\")
     .replace(/(\S)\\(\S)/g, "$1\\ $2")
     .replace(/\s+\\(\S)/g, "\\ $1")
-    .replace(/\s+\\\s+/g, "\\ ")
+    .replace(/\s+\\\\s+/g, "\\ ")
 }
 
 function stripExtraText(text: string): string {
@@ -329,6 +329,7 @@ export function TranscriptionForm() {
     totalSlashes: number
     fixerChanges: FixerChange[]
     wordCountMismatch: boolean
+    missingWords?: boolean
   }>({
     state: "idle",
     retryCount: 0,
@@ -336,6 +337,7 @@ export function TranscriptionForm() {
     totalSlashes: 0,
     fixerChanges: [],
     wordCountMismatch: false,
+    missingWords: false
   })
   const [showFixerDiff, setShowFixerDiff] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
@@ -1023,11 +1025,19 @@ export function TranscriptionForm() {
                       key={i}
                       contentEditable={isHighlighted}
                       suppressContentEditableWarning
+                      data-batch-word={part}
                       onClick={(e) => {
                         e.stopPropagation()
                         setBatchEditWord(part)
                       }}
-                      onBlur={() => setBatchEditWord(null)}
+                      onBlur={(e) => {
+                        const newWord = e.currentTarget.innerText
+                        // Commit the batch changes to the actual state
+                        const parts = result.split(/(\s+)/)
+                        const updated = parts.map(p => p === part ? newWord : p).join("")
+                        setResult(updated)
+                        setBatchEditWord(null)
+                      }}
                       onInput={(e) => {
                         const newWord = e.currentTarget.innerText
                         // Real-time batch update of other identical instances in the DOM
@@ -1038,14 +1048,6 @@ export function TranscriptionForm() {
                             (el as HTMLElement).innerText = newWord
                           }
                         })
-                      }}
-                      onBlur={(e) => {
-                        const newWord = e.currentTarget.innerText
-                        // Commit the batch changes to the actual state
-                        const parts = result.split(/(\s+)/)
-                        const updated = parts.map(p => p === part ? newWord : p).join("")
-                        setResult(updated)
-                        setBatchEditWord(null)
                       }}
                       className={`px-0.5 rounded transition-colors cursor-text border border-transparent ${
                         isHighlighted
