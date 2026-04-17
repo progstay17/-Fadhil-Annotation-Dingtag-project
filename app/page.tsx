@@ -3,6 +3,7 @@
 import { TranscriptionForm } from "@/components/transcription-form"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { QrisSection } from "@/components/qris-section"
 import { useLanguage } from "@/components/language-provider"
 import { Linkedin, Mail } from "lucide-react"
 
@@ -43,7 +44,7 @@ export default function Home() {
 
       <TranscriptionForm />
 
-      <footer className="mt-auto pt-12 pb-8 flex flex-col items-center gap-4">
+      <footer className="mt-auto pt-12 pb-8 flex flex-col items-center gap-4 relative">
         <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">
           {t("footerSignature")}
         </p>
@@ -66,6 +67,7 @@ export default function Home() {
             </a>
           </div>
         </div>
+        <QrisSection />
       </footer>
     </main>
   )
