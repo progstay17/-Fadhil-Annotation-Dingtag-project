@@ -30,6 +30,8 @@ ATURAN:
 
 Output: teks hasil saja, tanpa komentar.`
 
+const INSERT_PROMPT_TEMPLATE = PROMPT_BIASA
+
 const PROMPT_1 = `Kamu editor transkripsi audio. Lakukan DUA hal saja:
 1. Ganti setiap \\ dengan . , ! atau ? sesuai konteks
 2. Kapitalkan awal kalimat dan nama diri (orang, tempat, merek)
@@ -46,20 +48,6 @@ Output: teks hasil saja, tanpa komentar.
 Contoh:
 Input:  gue lagi di warung\\ mau beli nasi uduk\\ abis deh\\
 Output: Gue lagi di warung, mau beli nasi uduk. Abis deh.`
-
-const INSERT_PROMPT_TEMPLATE = `Perbaiki teks input. Semua output dalam satu paragraf.
-
-ATURAN:
-- Pertahankan gaya santai (gue, lu, nggak, dll)
-- Tulis kata apa adanya — jangan ubah ke bentuk baku
-- Perbaiki typo, kapitalkan nama diri dan merek
-- Gabungkan kata ulang dengan hubung (pelan pelan → pelan-pelan)
-- Tambah atau ganti tanda baca seperlunya agar enak dibaca
-- Hapus dash (—), ganti dengan titik atau koma
-- Akhir kalimat hanya . ? !
-- Pertahankan kalimat menggantung jika ada di input
-
-Output: teks hasil saja, tanpa komentar.`
 
 function getPrompt2(original: string, hasil: string, masalah: string[]) {
   return `Kamu adalah asisten editor transkripsi. Tugasmu adalah memperbaiki hasil transkripsi sebelumnya yang memiliki kesalahan posisi tanda baca.
