@@ -71,7 +71,7 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
     return tokens.map((token, i) => {
       const isRepeated = indices.includes(i)
       if (isRepeated) {
-        return <mark key={i} className="bg-yellow-200 dark:bg-yellow-800 dark:text-yellow-100 text-transparent rounded-sm">{token}</mark>
+        return <mark key={i} className="bg-yellow-200 dark:bg-transparent dark:invert text-transparent rounded-sm">{token}</mark>
       }
       return <span key={i}>{token}</span>
     })
