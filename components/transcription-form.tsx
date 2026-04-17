@@ -16,15 +16,19 @@ import {
 
 type Provider = "groq" | "google" | "aiml" | "openrouter"
 
-const PROMPT_BIASA = `Kamu editor transkripsi audio. Tugasmu adalah memperbaiki tanda baca dan EYD (Ejaan yang Disempurnakan) pada teks transkripsi.
+const PROMPT_BIASA = `Perbaiki teks input. Semua output dalam satu paragraf.
 
-Tugas:
-1. Tambahkan tanda baca (titik, koma, tanya, seru) yang sesuai dengan konteks.
-2. Perbaiki kapitalisasi di awal kalimat dan nama diri.
-3. Jangan mengubah, menambah, atau menghapus kata-kata asli.
-4. Jangan memberikan penjelasan atau komentar.
+ATURAN:
+- Pertahankan gaya santai (gue, lu, nggak, dll)
+- Tulis kata apa adanya — jangan ubah ke bentuk baku
+- Perbaiki typo, kapitalkan nama diri dan merek
+- Gabungkan kata ulang dengan hubung (pelan pelan → pelan-pelan)
+- Tambah atau ganti tanda baca seperlunya agar enak dibaca
+- Hapus dash (—), ganti dengan titik atau koma
+- Akhir kalimat hanya . ? !
+- Pertahankan kalimat menggantung jika ada di input
 
-Output: teks hasil saja.`
+Output: teks hasil saja, tanpa komentar.`
 
 const PROMPT_1 = `Kamu editor transkripsi audio. Lakukan DUA hal saja:
 1. Ganti setiap \\ dengan . , ! atau ? sesuai konteks
@@ -47,6 +51,7 @@ const INSERT_PROMPT_TEMPLATE = `Perbaiki teks input. Semua output dalam satu par
 
 ATURAN:
 - Pertahankan gaya santai (gue, lu, nggak, dll)
+- Tulis kata apa adanya — jangan ubah ke bentuk baku
 - Perbaiki typo, kapitalkan nama diri dan merek
 - Gabungkan kata ulang dengan hubung (pelan pelan → pelan-pelan)
 - Tambah atau ganti tanda baca seperlunya agar enak dibaca
@@ -75,7 +80,12 @@ Perbaiki HANYA posisi tanda baca yang salah tersebut. Jangan mengubah kata-kata,
 function normalizeInput(text: string): string {
   // kata \kata selanjutnya  → kata\ kata selanjutnya
   // kata \ kata selanjutnya → kata\ kata selanjutnya
+  // word\word -> word\ word
+  // Fix dangling backslashes at start or multi-slashes
   return text
+    .replace(/^\\+/, "")
+    .replace(/\\\\+/g, "\\")
+    .replace(/(\S)\\(\S)/g, "$1\\ $2")
     .replace(/\s+\\(\S)/g, "\\ $1")
     .replace(/\s+\\\s+/g, "\\ ")
 }
@@ -92,10 +102,27 @@ function stripExtraText(text: string): string {
   return filteredLines.join("\n").trim()
 }
 
-function validator(input: string, output: string): { ok: boolean; masalah: string[] } {
+function validator(input: string, output: string): { ok: boolean; masalah: string[]; missingWords?: boolean } {
   const masalah: string[] = []
   const inputWords = input.split(/\s+/).filter(w => w.length > 0)
   const outputWords = output.split(/\s+/).filter(w => w.length > 0)
+
+  // 1. Word Preservation Check (Fuzzy)
+  const outputTokens = outputWords.map(w => w.replace(/[.,!?]$/, "").toLowerCase())
+  let missingWords = false
+  for (const inWordWithSlash of inputWords) {
+    const inWord = inWordWithSlash.replace(/\\$/, "").toLowerCase()
+    if (inWord.length < 2) continue
+
+    const hasMatch = outputTokens.some(outWord =>
+      outWord.startsWith(inWord.slice(0, 3)) || inWord.startsWith(outWord.slice(0, 3))
+    )
+
+    if (!hasMatch) {
+      missingWords = true
+      break
+    }
+  }
 
   const anchors: { word: string; pos: number }[] = []
   inputWords.forEach((word, index) => {
@@ -114,7 +141,7 @@ function validator(input: string, output: string): { ok: boolean; masalah: strin
 
   if (outputPunctuationWords.length !== slashCount) {
     masalah.push(`jumlah tanda baca tidak sesuai jumlah penanda jeda (ada ${outputPunctuationWords.length}, seharusnya ${slashCount})`)
-    return { ok: false, masalah }
+    return { ok: false, masalah, missingWords }
   }
 
   anchors.forEach((anchor, i) => {
@@ -124,11 +151,8 @@ function validator(input: string, output: string): { ok: boolean; masalah: strin
     const outputWord = item.word
     const baseOutputWord = outputWord.replace(/[.,!?]$/, "").toLowerCase()
 
-    // Position check is handled by matching anchors to carrier list by index
-    // But we still verify word content match with fuzzy 3-char prefix
     const isMatch = baseOutputWord.startsWith(anchor.word.slice(0, 3)) || anchor.word.startsWith(baseOutputWord.slice(0, 3))
 
-    // Also check if the absolute position matches
     if (item.index !== anchor.pos) {
       masalah.push(`tanda baca ke-${i + 1} ("${baseOutputWord}") berada di posisi ${item.index + 1}, seharusnya di posisi ${anchor.pos + 1} ("${anchor.word}")`)
     } else if (!isMatch) {
@@ -136,7 +160,7 @@ function validator(input: string, output: string): { ok: boolean; masalah: strin
     }
   })
 
-  return { ok: masalah.length === 0, masalah }
+  return { ok: masalah.length === 0, masalah, missingWords }
 }
 
 interface FixerChange {
@@ -157,10 +181,16 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
     }
   })
 
+  // To track words that were capitalized in input
+  const inputCapitalizedIndices = new Set<number>()
+  inputWords.forEach((word, i) => {
+    if (/^[A-Z]/.test(word)) inputCapitalizedIndices.add(i)
+  })
+
   let finalWordsArray = [...outputWords]
   const punctuationRegex = /[.,!?]$/
 
-  // Rule 1: Remove all punctuation from words that are NOT in an anchor position
+  // Rule 1: Re-align anchors
   const anchorIndicesInOutput = new Set<number>()
   anchors.forEach((anchor) => {
     let foundIndex = -1
@@ -185,33 +215,39 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
     }
   })
 
-  // Apply removal and lowercasing
+  // Capitalization Rules & Punctuation Cleanup
   for (let i = 0; i < finalWordsArray.length; i++) {
-    if (!anchorIndicesInOutput.has(i) && punctuationRegex.test(finalWordsArray[i])) {
-      const original = finalWordsArray[i]
-      let fixed = original.replace(punctuationRegex, "")
+    const original = finalWordsArray[i]
+    let word = original
 
-      // If it was sentence-ending punctuation, replace with comma
-      if (/[.!?]$/.test(original)) {
-        fixed = fixed + ","
+    // 1. Enforce Lowercase unless capitalized in input or after sentence ender
+    const afterSentenceEnder = i > 0 && /[.!?]$/.test(finalWordsArray[i-1])
+    const wasCapitalizedInInput = inputCapitalizedIndices.has(i)
+
+    if (i === 0 || afterSentenceEnder || wasCapitalizedInInput) {
+      // Keep or make capitalized
+      if (/^[a-z]/.test(word)) {
+        word = word[0].toUpperCase() + word.slice(1)
       }
-
-      finalWordsArray[i] = fixed
-      changes.push({ original, fixed })
-
-      // Lowercase next word if previous was sentence ender
-      if (/[.!?]$/.test(original) && i + 1 < finalWordsArray.length) {
-        const nextWord = finalWordsArray[i+1]
-        if (/^[A-Z]/.test(nextWord)) {
-          const lowerNext = nextWord[0].toLowerCase() + nextWord.slice(1)
-          finalWordsArray[i+1] = lowerNext
-          changes.push({ original: nextWord, fixed: lowerNext })
-        }
+    } else {
+      // Make lowercase
+      if (/^[A-Z]/.test(word)) {
+        word = word[0].toLowerCase() + word.slice(1)
       }
+    }
+
+    // 2. Remove punctuation if NOT an anchor
+    if (!anchorIndicesInOutput.has(i) && punctuationRegex.test(word)) {
+      word = word.replace(punctuationRegex, "")
+    }
+
+    if (original !== word) {
+      finalWordsArray[i] = word
+      changes.push({ original, fixed: word })
     }
   }
 
-  // Rule 2: Ensure each anchor has punctuation (insert comma if missing)
+  // Ensure anchors have punctuation
   const sortedAnchorIndices = Array.from(anchorIndicesInOutput).sort((a,b) => a-b)
   sortedAnchorIndices.forEach((idx, i) => {
     const isLastAnchor = i === sortedAnchorIndices.length - 1
@@ -223,7 +259,6 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
       finalWordsArray[idx] = fixed
       changes.push({ original, fixed })
     } else if (isLastAnchor && !finalWordsArray[idx].endsWith(".")) {
-      // Force period on last anchor
       const original = finalWordsArray[idx]
       const fixed = original.replace(punctuationRegex, ".")
       finalWordsArray[idx] = fixed
@@ -235,38 +270,42 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
 
   // FINAL CLEANUP PASS
   result = result
-    .replace(/\\/g, "")      // Remove any remaining \
-    .replace(/,\s*,/g, ",")  // Double commas
-    .replace(/,\s*\./g, ".") // Comma followed by period
-    .replace(/\s+/g, " ")    // Normalize spaces
+    .replace(/\\/g, "")
+    // Specific double punctuation priority (sentence enders over commas)
+    .replace(/,\s*([.!?])/g, "$1") // ., -> .  ?, -> ?
+    .replace(/([.!?])\s*,/g, "$1") // ,. -> .  ,? -> ?
+    .replace(/[,.!?]\s*([,.!?])/g, "$1") // Fallback
+    .replace(/,\s*\./g, ".")
+    .replace(/\s+/g, " ")
     .trim()
 
   // Ensure last word has sentence-ender
   if (finalWordsArray.length > 0) {
     const lastIdx = finalWordsArray.length - 1
-    const lastWord = finalWordsArray[lastIdx]
-    if (!/[.!?]$/.test(lastWord)) {
-      const original = lastWord
+    if (!/[.!?]$/.test(finalWordsArray[lastIdx])) {
+      const original = finalWordsArray[lastIdx]
       const fixed = original.replace(/[.,]$/, "") + "."
       finalWordsArray[lastIdx] = fixed
-      // Only push to changes if it actually changed
-      if (original !== fixed) {
-        changes.push({ original, fixed })
+      if (original !== fixed) changes.push({ original, fixed })
+    }
+  }
+
+  // FINAL CAPITALIZATION PASS (Rule: First word and words after . ! ? always capitalized)
+  for (let i = 0; i < finalWordsArray.length; i++) {
+    const word = finalWordsArray[i]
+    const shouldCapitalize = i === 0 || (i > 0 && /[.!?]$/.test(finalWordsArray[i - 1]))
+
+    if (shouldCapitalize && /^[a-z]/.test(word)) {
+      const capitalized = word[0].toUpperCase() + word.slice(1)
+      finalWordsArray[i] = capitalized
+      // Track as change if it wasn't already tracked
+      if (word !== capitalized) {
+        changes.push({ original: word, fixed: capitalized })
       }
     }
   }
 
-  result = finalWordsArray.join(" ")
-
-  // FINAL CLEANUP PASS (Again to ensure joining didn't mess up)
-  result = result
-    .replace(/\\/g, "")      // Remove any remaining \
-    .replace(/,\s*,/g, ",")  // Double commas
-    .replace(/,\s*\./g, ".") // Comma followed by period
-    .replace(/\s+/g, " ")    // Normalize spaces
-    .trim()
-
-  return { result, changes, wordCountMismatch }
+  return { result: finalWordsArray.join(" "), changes, wordCountMismatch }
 }
 
 export function TranscriptionForm() {
@@ -277,7 +316,7 @@ export function TranscriptionForm() {
   const [scoring, setScoring] = useState<ScoringResult | null>(null)
   const [showDiff, setShowDiff] = useState(false)
   const [provider, setProvider] = useState<Provider>("google")
-  const [version, setVersion] = useState<"biasa" | "v1" | "v2.2">("biasa")
+  const [version, setVersion] = useState<"biasa" | "v1" | "v2.2" | "v3">("biasa")
   const [status, setStatus] = useState<{ state: StatusState; messageKey: string }>({
     state: "idle",
     messageKey: "statusReady",
@@ -301,6 +340,12 @@ export function TranscriptionForm() {
   const [showFixerDiff, setShowFixerDiff] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
 
+  // Filter state
+  const [v3Filter, setV3Filter] = useState("")
+  const [v3Replace, setV3Replace] = useState("")
+  const [v3Case, setV3Case] = useState<"none" | "sentence" | "lower" | "upper" | "capital" | "toggle">("none")
+  const [batchEditWord, setBatchEditWord] = useState<string | null>(null)
+
   useEffect(() => {
     const hasSeen = localStorage.getItem("tb_tutorial_seen")
     if ((version === "v1" || version === "v2.2") && !hasSeen) {
@@ -322,6 +367,11 @@ export function TranscriptionForm() {
     setV2Status({ state: "idle", retryCount: 0, masalah: [], totalSlashes: 0, fixerChanges: [], wordCountMismatch: false })
     setShowFixerDiff(false)
     setProcessTime(null)
+    // Clear V3 state
+    setV3Filter("")
+    setV3Replace("")
+    setV3Case("none")
+    setBatchEditWord(null)
   }, [])
 
   const pasteFromClipboard = useCallback(async () => {
@@ -358,6 +408,64 @@ export function TranscriptionForm() {
     }
 
     const start = performance.now()
+
+    if (version === "v3") {
+      const tokens = v3Filter.trim().split(/\s+/).filter(t => t.length > 0)
+      const hasFilter = tokens.length > 0
+      const hasCase = v3Case !== "none"
+
+      if (!hasFilter && !hasCase) {
+        setStatus({ state: "error", messageKey: "statusNoFilter" })
+        return
+      }
+
+      let workingText = input
+
+      // 1. Literal Token Replacement Pass
+      if (hasFilter) {
+        const replacement = v3Replace
+        for (const token of tokens) {
+          let index = workingText.indexOf(token)
+          while (index !== -1) {
+            workingText = workingText.substring(0, index) + replacement + workingText.substring(index + token.length)
+            index = workingText.indexOf(token, index + replacement.length)
+          }
+        }
+      }
+
+      // 2. Format Huruf Pass
+      if (hasCase) {
+        if (v3Case === "lower") {
+          workingText = workingText.toLowerCase()
+        } else if (v3Case === "upper") {
+          workingText = workingText.toUpperCase()
+        } else if (v3Case === "sentence") {
+          // Capitalize first character, rest lowercase
+          workingText = workingText.toLowerCase()
+          if (workingText.length > 0) {
+            workingText = workingText[0].toUpperCase() + workingText.slice(1)
+          }
+        } else if (v3Case === "capital") {
+          // First letter of every word uppercase, rest lowercase
+          workingText = workingText.toLowerCase().split(" ").map(word =>
+            word.length > 0 ? word[0].toUpperCase() + word.slice(1) : ""
+          ).join(" ")
+        } else if (v3Case === "toggle") {
+          workingText = workingText.split("").map(c =>
+            c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()
+          ).join("")
+        }
+      }
+
+      // 3. Render Output (Literal, no extra normalization)
+      setResult(workingText)
+      setBatchEditWord(null) // Reset edit state on new process
+      const elapsed = ((performance.now() - start) / 1000).toFixed(1)
+      setProcessTime(elapsed)
+      setStatus({ state: "success", messageKey: "statusDone" })
+      return
+    }
+
     const isBackslashMode = version === "v1" || version === "v2.2"
     const normalizedInputText = isBackslashMode ? normalizeInput(input.trim()) : input.trim()
 
@@ -373,7 +481,8 @@ export function TranscriptionForm() {
       masalah: [],
       totalSlashes,
       fixerChanges: [],
-      wordCountMismatch: false
+      wordCountMismatch: false,
+      missingWords: false
     })
 
     try {
@@ -381,6 +490,7 @@ export function TranscriptionForm() {
       let currentRetry = 0
       let isValid = false
       let currentMasalah: string[] = []
+      let missingWords = false
 
       // Initial Call
       const response = await fetch("/api/transcribe", {
@@ -402,9 +512,10 @@ export function TranscriptionForm() {
         const validation = validator(normalizedInputText, currentResult)
         isValid = validation.ok
         currentMasalah = validation.masalah
+        missingWords = !!validation.missingWords
 
         // AI Retry Loop
-        while (!isValid && currentRetry < 2) {
+        while (!isValid && currentRetry < 1) {
           currentRetry++
           setV2Status(prev => ({ ...prev, retryCount: currentRetry, masalah: currentMasalah }))
 
@@ -426,6 +537,7 @@ export function TranscriptionForm() {
           const retryValidation = validator(normalizedInputText, currentResult)
           isValid = retryValidation.ok
           currentMasalah = retryValidation.masalah
+          missingWords = !!retryValidation.missingWords
         }
 
         let finalState: "valid" | "fixed_ai" | "fixed_algo" | "fixed_warning" = "valid"
@@ -449,7 +561,8 @@ export function TranscriptionForm() {
           masalah: currentMasalah,
           totalSlashes,
           fixerChanges,
-          wordCountMismatch
+          wordCountMismatch,
+          missingWords
         })
       }
 
@@ -503,7 +616,8 @@ export function TranscriptionForm() {
     if (!input.trim()) return
     const flattened = input
       .toLowerCase()
-      .replace(/[\\.,!?;:]/g, "")
+      // Replace punctuation with space first to ensure word separation, then normalize spaces
+      .replace(/[\\.,!?;:]/g, " ")
       // Remove Quotation marks
       .replace(/["''""]/g, "")
       .replace(/[''']/g, "")
@@ -533,7 +647,7 @@ export function TranscriptionForm() {
   )
 
   return (
-    <div className="w-full max-w-3xl flex flex-col gap-4">
+    <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl flex flex-col gap-4">
       <TranscriptionCard
         label={
           <div className="flex items-center gap-2">
@@ -581,7 +695,7 @@ export function TranscriptionForm() {
           <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider font-semibold">
             {t("modeLabel")}
           </span>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
             <button
               onClick={() => setVersion("biasa")}
               disabled={isProcessing}
@@ -591,8 +705,11 @@ export function TranscriptionForm() {
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex items-center gap-2">
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
                 {t("biasaTitle")}
+                <span className="text-[9px] font-bold text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
+                  {t("tagAnnotator")}
+                </span>
               </span>
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("biasaDesc")}
@@ -607,8 +724,11 @@ export function TranscriptionForm() {
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex items-center gap-2">
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
                 {t("v1Title")}
+                <span className="text-[9px] font-bold text-muted-foreground/60 bg-secondary px-1.5 py-0.5 rounded border border-border">
+                  {t("tagLessRecommended")}
+                </span>
               </span>
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("v1Desc")}
@@ -623,18 +743,90 @@ export function TranscriptionForm() {
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex items-center gap-2">
-                {t("v2Title")}
-                <span className="px-1.5 py-0.5 rounded-full bg-secondary text-[9px] font-bold uppercase tracking-tighter text-muted-foreground border border-border">
-                  Beta
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
+                <div className="flex items-center gap-2">
+                  {t("v2Title")}
+                  <span className="px-1.5 py-0.5 rounded-full bg-secondary text-[9px] font-bold uppercase tracking-tighter text-muted-foreground border border-border">
+                    Beta
+                  </span>
+                </div>
+                <span className="text-[9px] font-bold text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
+                  {t("tagRecommended")}
                 </span>
               </span>
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("v2Desc")}
               </span>
             </button>
+            <button
+              onClick={() => setVersion("v3")}
+              disabled={isProcessing}
+              className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
+                version === "v3"
+                  ? "bg-primary/5 border-primary ring-1 ring-primary"
+                  : "bg-card border-border hover:bg-secondary/50"
+              } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
+                {t("v3Title")}
+                <span className="text-[9px] font-bold text-purple-600/70 bg-purple-500/5 px-1.5 py-0.5 rounded border border-purple-500/10">
+                  {t("tagQC")}
+                </span>
+              </span>
+              <span className="font-mono text-[10px] text-muted-foreground mt-1">
+                {t("v3Desc")}
+              </span>
+            </button>
           </div>
         </div>
+
+        {version === "v3" && (
+          <div className="flex flex-col gap-4 p-4 bg-secondary/30 border border-border rounded-lg">
+            <div className="flex flex-col gap-1.5">
+              <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                {t("filterLabel")}
+              </label>
+              <input
+                type="text"
+                value={v3Filter}
+                onChange={(e) => setV3Filter(e.target.value)}
+                placeholder={t("filterPlaceholder")}
+                className="w-full bg-background border border-border rounded px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                {t("replaceLabel")}
+              </label>
+              <input
+                type="text"
+                value={v3Replace}
+                onChange={(e) => setV3Replace(e.target.value)}
+                placeholder={t("replacePlaceholder")}
+                className="w-full bg-background border border-border rounded px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                {t("caseLabel")}
+              </label>
+              <select
+                value={v3Case}
+                onChange={(e) => setV3Case(e.target.value as any)}
+                className="w-full bg-background border border-border rounded px-2 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="none">{t("caseNone")}</option>
+                <option value="sentence">Sentence case</option>
+                <option value="lower">lowercase</option>
+                <option value="upper">UPPERCASE</option>
+                <option value="capital">Capitalize Each Word</option>
+                <option value="toggle">tOGGLE cASE</option>
+              </select>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -658,7 +850,7 @@ export function TranscriptionForm() {
         >
           {isProcessing ? t("processingButton") : `${t("processButton")} \u2192`}
         </button>
-        {version === "biasa" ? (
+        {version === "biasa" && (
           <button
             onClick={insertPrompt}
             disabled={isProcessing || !input.trim()}
@@ -666,13 +858,22 @@ export function TranscriptionForm() {
           >
             {promptCopied ? t("promptCopied") : t("insertPromptButton")}
           </button>
-        ) : (
+        )}
+        {(version === "v1" || version === "v2.2") && (
           <button
             onClick={flatten}
             disabled={isProcessing || !input.trim()}
             className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer"
           >
             {t("flatTextButton")}
+          </button>
+        )}
+        {version === "v3" && (
+          <button
+            onClick={clearAll}
+            className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-4 py-2.5 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer"
+          >
+            {t("clearButton")}
           </button>
         )}
       </div>
@@ -691,7 +892,7 @@ export function TranscriptionForm() {
         }
         hint={
           version === "v2.2" && v2Status.state !== "idle" && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {v2Status.state === "loading" && (
                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 border border-purple-500/20 animate-pulse font-bold">
                   <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce" />
@@ -776,6 +977,49 @@ export function TranscriptionForm() {
                   </span>
                 ))}
               </div>
+            ) : version === "v3" ? (
+              <div
+                className="flex flex-wrap gap-x-1 gap-y-0.5 outline-none"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) setBatchEditWord(null)
+                }}
+              >
+                {result.split(/(\s+)/).map((part, i) => {
+                  if (/\s+/.test(part)) return <span key={i}>{part}</span>
+
+                  const isHighlighted = batchEditWord !== null && part === batchEditWord
+                  return (
+                    <span
+                      key={i}
+                      contentEditable={isHighlighted}
+                      suppressContentEditableWarning
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setBatchEditWord(part)
+                      }}
+                      onBlur={() => setBatchEditWord(null)}
+                      onInput={(e) => {
+                        const newWord = e.currentTarget.innerText
+                        // Escape regex special chars for exact literal match
+                        const escaped = part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                        // Match exact word with boundaries to prevent partial matches like "gue" in "guean"
+                        // but since we split by whitespace, we can just use global replace on tokens
+                        const parts = result.split(/(\s+)/)
+                        const updated = parts.map(p => p === part ? newWord : p).join("")
+                        setResult(updated)
+                        setBatchEditWord(newWord)
+                      }}
+                      className={`px-0.5 rounded transition-colors cursor-text border border-transparent ${
+                        isHighlighted
+                          ? "bg-primary/20 text-primary border-primary/30 ring-1 ring-primary/20"
+                          : "hover:bg-secondary/80"
+                      }`}
+                    >
+                      {part}
+                    </span>
+                  )
+                })}
+              </div>
             ) : result
           ) : (
             <span className="text-muted-foreground">
@@ -788,7 +1032,7 @@ export function TranscriptionForm() {
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-muted-foreground italic">
                   {isProcessing ? (
-                    <>{t("statusProcessing")} {version === "v2.2" && v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/2</span>}</>
+                    <>{t("statusProcessing")} {version === "v2.2" && v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/1</span>}</>
                   ) : version === "v2.2" && v2Status.state !== "idle" ? (
                     <>
                       {v2Status.state === "valid" && `selesai. semua ${v2Status.totalSlashes} tanda baca sesuai posisi.`}
@@ -810,6 +1054,11 @@ export function TranscriptionForm() {
               {version === "v2.2" && v2Status.wordCountMismatch && (
                 <span className="text-[10px] text-orange-600 font-bold uppercase tracking-tight">
                   {t("v2Warning")}
+                </span>
+              )}
+              {version === "v2.2" && v2Status.missingWords && (
+                <span className="text-[10px] text-red-600 font-bold uppercase tracking-tight">
+                  {t("v2MissingWords")}
                 </span>
               )}
             </div>

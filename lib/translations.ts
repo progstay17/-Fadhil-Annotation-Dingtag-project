@@ -35,6 +35,7 @@ export const translations = {
     statusEmptyInput: "input kosong",
     statusCopyFailed: "gagal menyalin",
     statusError: "Terjadi kesalahan",
+    statusNoFilter: "Tidak ada filter atau format yang dipilih",
     
     // Scoring
     accuracyScore: "Skor Akurasi",
@@ -58,6 +59,25 @@ export const translations = {
     v1Desc: "Proses langsung. Cepat, tanpa validasi tambahan.",
     v2Title: "V2.2 — Beta",
     v2Desc: "Proses + validasi + algorithmic fixer otomatis. Lebih akurat, sedikit lebih lambat.",
+    v3Title: "Filter Custom",
+    v3Desc: "Hapus elemen tertentu atau ubah format teks secara manual.",
+    tagAnnotator: "[Recommended for Annotator]",
+    tagQC: "[Recommended for QC]",
+    tagLessRecommended: "[Less Recommended for Annotation]",
+    tagRecommended: "[Recommended for Annotation]",
+
+    // Filters
+    filterLabel: "Filter",
+    filterPlaceholder: "Ketik karakter atau kata yang ingin dihapus, pisahkan dengan spasi",
+    replaceLabel: "Ganti dengan",
+    replacePlaceholder: "Kosongkan untuk menghapus",
+    caseLabel: "Format Huruf",
+    caseNone: "(tidak ada)",
+    caseSentence: "Sentence case",
+    caseLower: "lowercase",
+    caseUpper: "UPPERCASE",
+    caseCapital: "Capitalize Each Word",
+    caseToggle: "tOGGLE cASE",
 
     // Tutorial Popup
     tutorialTitle: "Cara pakai metode Backslash",
@@ -72,6 +92,7 @@ export const translations = {
     v2BadgeError: "✗ perlu review",
     v2FixerTitle: "Perubahan oleh fixer",
     v2Warning: "Peringatan: jumlah kata berubah. Hasil perlu dicek ulang.",
+    v2MissingWords: "⚠ Beberapa kata dari input hilang/berubah.",
     footerSignature: "for AIT from Fadhil Ghifarion 法迪",
 
     // Footer
@@ -113,6 +134,7 @@ export const translations = {
     statusEmptyInput: "input is empty",
     statusCopyFailed: "failed to copy",
     statusError: "An error occurred",
+    statusNoFilter: "No filter or format selected",
     
     // Scoring
     accuracyScore: "Accuracy Score",
@@ -136,6 +158,25 @@ export const translations = {
     v1Desc: "Direct process. Fast, no additional validation.",
     v2Title: "V2.2 — Beta",
     v2Desc: "Process + validation + automatic algorithmic fixer. More accurate, slightly slower.",
+    v3Title: "Custom Filter",
+    v3Desc: "Remove specific elements or change text format manually.",
+    tagAnnotator: "[Recommended for Annotator]",
+    tagQC: "[Recommended for QC]",
+    tagLessRecommended: "[Less Recommended for Annotation]",
+    tagRecommended: "[Recommended for Annotation]",
+
+    // Filters
+    filterLabel: "Filter",
+    filterPlaceholder: "Type characters or words to remove, separated by spaces",
+    replaceLabel: "Replace with",
+    replacePlaceholder: "Leave empty to remove",
+    caseLabel: "Letter Format",
+    caseNone: "(none)",
+    caseSentence: "Sentence case",
+    caseLower: "lowercase",
+    caseUpper: "UPPERCASE",
+    caseCapital: "Capitalize Each Word",
+    caseToggle: "tOGGLE cASE",
 
     // Tutorial Popup
     tutorialTitle: "How to use the Backslash method",
@@ -150,6 +191,7 @@ export const translations = {
     v2BadgeError: "✗ needs review",
     v2FixerTitle: "Changes by fixer",
     v2Warning: "Warning: word count changed. Result may need manual check.",
+    v2MissingWords: "⚠ Some words from input are missing/changed.",
     footerSignature: "for AIT from Fadhil Ghifarion 法迪",
 
     // Footer
@@ -191,6 +233,7 @@ export const translations = {
     statusEmptyInput: "输入为空",
     statusCopyFailed: "复制失败",
     statusError: "发生错误",
+    statusNoFilter: "未选择过滤器或格式",
     
     // Scoring
     accuracyScore: "准确率得分",
@@ -214,6 +257,25 @@ export const translations = {
     v1Desc: "直接处理。快速，无需额外验证。",
     v2Title: "V2.2 — Beta",
     v2Desc: "处理 + 验证 + 自动算法修复。更准确，速度稍慢。",
+    v3Title: "自定义过滤器",
+    v3Desc: "手动删除特定元素或更改文本格式。",
+    tagAnnotator: "[Recommended for Annotator]",
+    tagQC: "[Recommended for QC]",
+    tagLessRecommended: "[Less Recommended for Annotation]",
+    tagRecommended: "[Recommended for Annotation]",
+
+    // Filters
+    filterLabel: "过滤",
+    filterPlaceholder: "输入要删除的字符或单词，用空格分隔",
+    replaceLabel: "替换为",
+    replacePlaceholder: "留空表示删除",
+    caseLabel: "字母格式",
+    caseNone: "（无）",
+    caseSentence: "句子大小写",
+    caseLower: "小写",
+    caseUpper: "大写",
+    caseCapital: "每个单词首字母大写",
+    caseToggle: "反转大小写",
 
     // Tutorial Popup
     tutorialTitle: "如何使用反斜杠方法",
@@ -228,6 +290,7 @@ export const translations = {
     v2BadgeError: "✗ 需要审核",
     v2FixerTitle: "修复程序所做的更改",
     v2Warning: "警告：字数已更改。结果可能需要手动检查。",
+    v2MissingWords: "⚠ 输入中的某些单词缺失/已更改。",
     footerSignature: "for AIT from Fadhil Ghifarion 法迪",
 
     // Footer
