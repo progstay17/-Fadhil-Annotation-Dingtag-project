@@ -405,43 +405,47 @@ export function TranscriptionForm() {
 
     if (version === "v3") {
       const tokens = v3Filter.trim().split(/\s+/).filter(t => t.length > 0)
-      if (tokens.length === 0 && v3Case === "none") {
+      const hasFilter = tokens.length > 0
+      const hasCase = v3Case !== "none"
+
+      if (!hasFilter && !hasCase) {
         setStatus({ state: "error", messageKey: "statusNoFilter" })
         return
       }
 
-      let filtered = input
+      let workingText = input
 
-      // Literal Token Replacement (Exact & Case-sensitive)
-      const replacement = v3Replace
-
-      if (tokens.length > 0) {
+      // 1. Literal Token Replacement Pass
+      if (hasFilter) {
+        const replacement = v3Replace
         for (const token of tokens) {
-          // Use a loop for literal replacement without regex
-          let index = filtered.indexOf(token)
+          let index = workingText.indexOf(token)
           while (index !== -1) {
-            filtered = filtered.substring(0, index) + replacement + filtered.substring(index + token.length)
-            index = filtered.indexOf(token, index + replacement.length)
+            workingText = workingText.substring(0, index) + replacement + workingText.substring(index + token.length)
+            index = workingText.indexOf(token, index + replacement.length)
           }
         }
       }
 
-      // MS Word Style Case Conversion
-      if (v3Case === "lower") {
-        filtered = filtered.toLowerCase()
-      } else if (v3Case === "upper") {
-        filtered = filtered.toUpperCase()
-      } else if (v3Case === "sentence") {
-        filtered = filtered.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g, c => c.toUpperCase())
-      } else if (v3Case === "capital") {
-        filtered = filtered.replace(/\b\w/g, c => c.toUpperCase())
-      } else if (v3Case === "toggle") {
-        filtered = filtered.split("").map(c =>
-          c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()
-        ).join("")
+      // 2. Format Huruf Pass
+      if (hasCase) {
+        if (v3Case === "lower") {
+          workingText = workingText.toLowerCase()
+        } else if (v3Case === "upper") {
+          workingText = workingText.toUpperCase()
+        } else if (v3Case === "sentence") {
+          workingText = workingText.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g, c => c.toUpperCase())
+        } else if (v3Case === "capital") {
+          workingText = workingText.replace(/\b\w/g, c => c.toUpperCase())
+        } else if (v3Case === "toggle") {
+          workingText = workingText.split("").map(c =>
+            c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()
+          ).join("")
+        }
       }
 
-      setResult(filtered.replace(/\s+/g, " ").trim())
+      // 3. Render Output (Literal, no extra normalization)
+      setResult(workingText)
       const elapsed = ((performance.now() - start) / 1000).toFixed(1)
       setProcessTime(elapsed)
       setStatus({ state: "success", messageKey: "statusDone" })
