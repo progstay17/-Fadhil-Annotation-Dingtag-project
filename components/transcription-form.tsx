@@ -19,7 +19,7 @@ type Provider = "groq" | "google" | "aiml" | "openrouter"
 const PROMPT_BIASA = `Perbaiki teks input. Semua output dalam satu paragraf.
 
 ATURAN:
-- Pertahankan gaya santai sesuai input
+- Pertahankan gaya santai (gue, lu, nggak, dll) sesuai input
 - Tulis kata apa adanya — jangan ubah ke bentuk baku
 - Perbaiki typo, kapitalkan nama diri dan merek
 - Gabungkan kata ulang dengan hubung (pelan pelan → pelan-pelan)
