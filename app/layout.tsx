@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import { LanguageProvider } from '@/components/language-provider'
 import './globals.css'
 
@@ -42,6 +43,7 @@ export default function RootLayout({
           {children}
         </LanguageProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
+        <SpeedInsights />
       </body>
     </html>
   )
