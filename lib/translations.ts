@@ -35,6 +35,7 @@ export const translations = {
     statusEmptyInput: "input kosong",
     statusCopyFailed: "gagal menyalin",
     statusError: "Terjadi kesalahan",
+    statusNoFilter: "Tidak ada filter atau format yang dipilih",
     
     // Scoring
     accuracyScore: "Skor Akurasi",
@@ -133,6 +134,7 @@ export const translations = {
     statusEmptyInput: "input is empty",
     statusCopyFailed: "failed to copy",
     statusError: "An error occurred",
+    statusNoFilter: "No filter or format selected",
     
     // Scoring
     accuracyScore: "Accuracy Score",
@@ -231,6 +233,7 @@ export const translations = {
     statusEmptyInput: "输入为空",
     statusCopyFailed: "复制失败",
     statusError: "发生错误",
+    statusNoFilter: "未选择过滤器或格式",
     
     // Scoring
     accuracyScore: "准确率得分",

@@ -404,10 +404,15 @@ export function TranscriptionForm() {
     const start = performance.now()
 
     if (version === "v3") {
+      const tokens = v3Filter.trim().split(/\s+/).filter(t => t.length > 0)
+      if (tokens.length === 0 && v3Case === "none") {
+        setStatus({ state: "error", messageKey: "statusNoFilter" })
+        return
+      }
+
       let filtered = input
 
       // Literal Token Replacement (Exact & Case-sensitive)
-      const tokens = v3Filter.split(/\s+/).filter(t => t.length > 0)
       const replacement = v3Replace
 
       if (tokens.length > 0) {
