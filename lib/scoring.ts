@@ -9,71 +9,106 @@ export interface ScoringResult {
 }
 
 /**
- * Calculates accuracy score by comparing input (with \ markers) and output.
- * Ignores whitespace (spaces/newlines) in calculations.
+ * Tokenizes text into words and whitespace.
+ */
+function tokenize(text: string): string[] {
+  // Matches words (including \\ markers and punctuation) or sequences of whitespace
+  return text.match(/\S+|[^\S]+/g) || []
+}
+
+/**
+ * Calculates accuracy score using word-level alignment.
+ * Ignores whitespace and newlines for scoring, but preserves them for highlights.
  */
 export function calculateScoring(input: string, output: string): ScoringResult {
-  // Remove all whitespace for logic comparison
-  const cleanInput = input.replace(/\s/g, "")
-  const cleanOutput = output.replace(/\s/g, "")
+  // Normalize hyphens to spaces for comparison as per requirements
+  const normalizedInput = input.replace(/-/g, " ")
+  const normalizedOutput = output.replace(/-/g, " ")
+
+  const inTokens = tokenize(normalizedInput)
+  const outTokens = tokenize(normalizedOutput)
+
+  // Filter out whitespace for alignment logic but keep track of indices
+  const inWords = inTokens.filter(t => /\S/.test(t))
+  const outWords = outTokens.filter(t => /\S/.test(t))
 
   const highlights: HighlightSegment[] = []
-
-  // Basic character-by-character alignment
-  let inIdx = 0
-  let outIdx = 0
-
   let matches = 0
   let totalOpportunities = 0
 
-  // We iterate through the input characters (excluding whitespace)
-  while (inIdx < cleanInput.length || outIdx < cleanOutput.length) {
-    const inChar = cleanInput[inIdx]
-    const outChar = cleanOutput[outIdx]
+  // Basic word-level alignment (greedy)
+  let inIdx = 0
+  let outIdx = 0
 
-    if (inChar === "\\") {
-      totalOpportunities++
-      // Backslash should match a punctuation in output
-      if (outChar && /[.,!?;:]/.test(outChar)) {
-        highlights.push({ text: outChar, type: "correct" })
+  while (inIdx < inWords.length || outIdx < outWords.length) {
+    const inWord = inWords[inIdx]
+    const outWord = outWords[outIdx]
+
+    if (!inWord && outWord) {
+      // AI added extra words
+      highlights.push({ text: outWord + " ", type: "added" })
+      outIdx++
+      continue
+    }
+
+    if (inWord && !outWord) {
+      // AI missing words
+      highlights.push({ text: inWord.replace("\\", "") + " ", type: "missing" })
+      inIdx++
+      continue
+    }
+
+    // Check if inWord has a \\ marker
+    if (inWord.endsWith("\\")) {
+      const baseInWord = inWord.slice(0, -1).toLowerCase()
+      const baseOutWord = outWord.replace(/[.,!?]$/, "").toLowerCase()
+      const hasPunctuation = /[.,!?]$/.test(outWord)
+
+      // It's a match if base words match (fuzzy 3-char) and punctuation is present
+      const baseMatches = baseOutWord.startsWith(baseInWord.slice(0, 3)) || baseInWord.startsWith(baseOutWord.slice(0, 3))
+
+      totalOpportunities++ // The \\ marker is an opportunity
+
+      if (baseMatches && hasPunctuation) {
+        highlights.push({ text: outWord + " ", type: "correct" })
+        matches++
+        inIdx++
+        outIdx++
+      } else if (baseMatches && !hasPunctuation) {
+        // Base word correct but missing punctuation
+        highlights.push({ text: outWord + " ", type: "changed" })
+        inIdx++
+        outIdx++
+      } else {
+        // Complete mismatch
+        highlights.push({ text: outWord + " ", type: "changed" })
+        inIdx++
+        outIdx++
+      }
+    } else {
+      // Regular word comparison
+      const cleanIn = inWord.toLowerCase()
+      const cleanOut = outWord.toLowerCase()
+
+      totalOpportunities++ // Each word is an opportunity
+
+      if (cleanIn === cleanOut) {
+        highlights.push({ text: outWord + " ", type: "normal" })
         matches++
         inIdx++
         outIdx++
       } else {
-        // Missing punctuation where \ was
-        highlights.push({ text: "[MISSING]", type: "missing" })
+        // Mismatch
+        highlights.push({ text: outWord + " ", type: "changed" })
         inIdx++
+        outIdx++
       }
-    } else if (inChar && outChar && inChar.toLowerCase() === outChar.toLowerCase()) {
-      // Character match (ignoring case)
-      totalOpportunities++
-      highlights.push({ text: outChar, type: "normal" })
-      matches++
-      inIdx++
-      outIdx++
-    } else if (inChar && !outChar) {
-      // Input has character, output doesn't (missing)
-      totalOpportunities++
-      highlights.push({ text: inChar, type: "changed" })
-      inIdx++
-    } else if (!inChar && outChar) {
-      // Output has extra character
-      highlights.push({ text: outChar, type: "added" })
-      outIdx++
-    } else if (inChar && outChar && inChar !== outChar) {
-      // Mismatch
-      totalOpportunities++
-      highlights.push({ text: outChar, type: "changed" })
-      inIdx++
-      outIdx++
-    } else {
-      break
     }
   }
 
   const score = totalOpportunities > 0 ? (matches / totalOpportunities) * 100 : 100
 
-  // Post-process highlights to merge consecutive segments of same type for better UI
+  // Post-process highlights to clean up trailing spaces and merge segments
   const mergedHighlights: HighlightSegment[] = []
   if (highlights.length > 0) {
     let current = { ...highlights[0] }
