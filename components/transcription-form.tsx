@@ -869,6 +869,57 @@ export function TranscriptionForm() {
                   </span>
                 ))}
               </div>
+            ) : version === "v3" ? (
+              <div
+                className="flex flex-wrap gap-x-0.5 gap-y-0.5 outline-none"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) setBatchEditWord(null)
+                }}
+              >
+                {result.split(/(\s+)/).map((part, i) => {
+                  if (/\s+/.test(part)) return <span key={i} className="whitespace-pre">{part}</span>
+
+                  const isHighlighted = batchEditWord !== null && part === batchEditWord
+                  return (
+                    <span
+                      key={i}
+                      contentEditable={isHighlighted}
+                      suppressContentEditableWarning
+                      data-batch-word={part}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setBatchEditWord(part)
+                      }}
+                      onBlur={(e) => {
+                        const newWord = e.currentTarget.innerText
+                        // Commit the batch changes to the actual state
+                        const parts = result.split(/(\s+)/)
+                        const updated = parts.map(p => p === part ? newWord : p).join("")
+                        setResult(updated)
+                        setBatchEditWord(null)
+                      }}
+                      onInput={(e) => {
+                        const newWord = e.currentTarget.innerText
+                        // Real-time batch update of other identical instances in the DOM
+                        // We use a data attribute to find matching spans
+                        const matchingSpans = document.querySelectorAll(`[data-batch-word="${part}"]`)
+                        matchingSpans.forEach(el => {
+                          if (el !== e.currentTarget) {
+                            (el as HTMLElement).innerText = newWord
+                          }
+                        })
+                      }}
+                      className={`px-0.5 rounded transition-colors cursor-text border border-transparent ${
+                        isHighlighted
+                          ? "bg-primary/20 text-primary border-primary/30 ring-1 ring-primary/20"
+                          : "hover:bg-secondary/80"
+                      }`}
+                    >
+                      {part}
+                    </span>
+                  )
+                })}
+              </div>
             ) : result
           ) : (
             <span className="text-muted-foreground">
