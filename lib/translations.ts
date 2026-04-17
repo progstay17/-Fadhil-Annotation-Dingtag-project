@@ -66,20 +66,6 @@ export const translations = {
     tagLessRecommended: "[Less Recommended for Annotation]",
     tagRecommended: "[Recommended for Annotation]",
 
-    // Filters
-    filterLabel: "Filter",
-    filterPlaceholder: "Ketik karakter atau kata yang ingin dihapus, pisahkan dengan spasi",
-    replaceLabel: "Ganti dengan",
-    replacePlaceholder: "Kosongkan untuk menghapus",
-    caseSensitiveLabel: "Case Sensitive (perhatikan huruf besar/kecil)",
-    caseLabel: "Format Huruf",
-    caseNone: "(tidak ada)",
-    caseSentence: "Sentence case",
-    caseLower: "lowercase",
-    caseUpper: "UPPERCASE",
-    caseCapital: "Capitalize Each Word",
-    caseToggle: "tOGGLE cASE",
-
     // Tutorial Popup
     tutorialTitle: "Cara pakai metode Backslash",
     tutorialBody: "Mode ini menggunakan tanda \\ sebagai penanda jeda suara.\n\nKetik atau paste transkripsi, lalu tambahkan \\ di setiap posisi jeda — titik, koma, tanda tanya, atau seru akan ditentukan otomatis oleh AI.\n\nContoh:\nInput: gue lagi di warung\\ mau beli nasi uduk\\ abis deh\\\nOutput: Gue lagi di warung, mau beli nasi uduk. Abis deh.",
@@ -166,20 +152,6 @@ export const translations = {
     tagLessRecommended: "[Less Recommended for Annotation]",
     tagRecommended: "[Recommended for Annotation]",
 
-    // Filters
-    filterLabel: "Filter",
-    filterPlaceholder: "Type characters or words to remove, separated by spaces",
-    replaceLabel: "Replace with",
-    replacePlaceholder: "Leave empty to remove",
-    caseSensitiveLabel: "Case Sensitive",
-    caseLabel: "Letter Format",
-    caseNone: "(none)",
-    caseSentence: "Sentence case",
-    caseLower: "lowercase",
-    caseUpper: "UPPERCASE",
-    caseCapital: "Capitalize Each Word",
-    caseToggle: "tOGGLE cASE",
-
     // Tutorial Popup
     tutorialTitle: "How to use the Backslash method",
     tutorialBody: "This mode uses the \\ sign as a voice pause marker.\n\nType or paste the transcription, then add \\ at each pause position — periods, commas, question marks, or exclamation points will be automatically determined by the AI.\n\nExample:\nInput: i'm at the shop\\ want to buy breakfast\\ it's gone\\\nOutput: I'm at the shop, want to buy breakfast. It's gone.",
@@ -265,20 +237,6 @@ export const translations = {
     tagQC: "[Recommended for QC]",
     tagLessRecommended: "[Less Recommended for Annotation]",
     tagRecommended: "[Recommended for Annotation]",
-
-    // Filters
-    filterLabel: "过滤",
-    filterPlaceholder: "输入要删除的字符或单词，用空格分隔",
-    replaceLabel: "替换为",
-    replacePlaceholder: "留空表示删除",
-    caseSensitiveLabel: "区分大小写",
-    caseLabel: "字母格式",
-    caseNone: "（无）",
-    caseSentence: "句子大小写",
-    caseLower: "小写",
-    caseUpper: "大写",
-    caseCapital: "每个单词首字母大写",
-    caseToggle: "反转大小写",
 
     // Tutorial Popup
     tutorialTitle: "如何使用反斜杠方法",

@@ -330,11 +330,6 @@ export function TranscriptionForm() {
   const [showFixerDiff, setShowFixerDiff] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
 
-  // Filter state
-  const [v3Filter, setV3Filter] = useState("")
-  const [v3Replace, setV3Replace] = useState("")
-  const [v3Case, setV3Case] = useState<"none" | "sentence" | "lower" | "upper" | "capital" | "toggle">("none")
-  const [v3CaseSensitive, setV3CaseSensitive] = useState(false)
   const [batchEditWord, setBatchEditWord] = useState<string | null>(null)
 
   useEffect(() => {
@@ -358,11 +353,6 @@ export function TranscriptionForm() {
     setV2Status({ state: "idle", retryCount: 0, masalah: [], totalSlashes: 0, fixerChanges: [], wordCountMismatch: false })
     setShowFixerDiff(false)
     setProcessTime(null)
-    // Clear V3 state
-    setV3Filter("")
-    setV3Replace("")
-    setV3Case("none")
-    setV3CaseSensitive(false)
     setBatchEditWord(null)
   }, [])
 
@@ -402,59 +392,7 @@ export function TranscriptionForm() {
     const start = performance.now()
 
     if (version === "v3") {
-      const tokens = v3Filter.trim().split(/\s+/).filter(t => t.length > 0)
-      const hasFilter = tokens.length > 0
-      const hasCase = v3Case !== "none"
-
-      if (!hasFilter && !hasCase) {
-        setStatus({ state: "error", messageKey: "statusNoFilter" })
-        return
-      }
-
-      let workingText = input
-
-      // 1. Literal Token Replacement Pass
-      if (hasFilter) {
-        const replacement = v3Replace
-        for (const token of tokens) {
-          const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-          const regex = new RegExp(escapedToken, v3CaseSensitive ? "g" : "gi")
-          // Use a function for replacement to ensure the string is treated literally (ignore $ signs)
-          workingText = workingText.replace(regex, () => replacement)
-        }
-      }
-
-      // 2. Format Huruf Pass
-      if (hasCase) {
-        if (v3Case === "lower") {
-          workingText = workingText.toLowerCase()
-        } else if (v3Case === "upper") {
-          workingText = workingText.toUpperCase()
-        } else if (v3Case === "sentence") {
-          // Capitalize first character, rest lowercase
-          // Note: spec says capitalize first character, rest lowercase
-          const firstChar = workingText.trim().charAt(0).toUpperCase()
-          const rest = workingText.trim().slice(1).toLowerCase()
-          workingText = firstChar + rest
-        } else if (v3Case === "capital") {
-          // First letter of every word uppercase, rest lowercase
-          workingText = workingText.toLowerCase().split(/(\s+)/).map(part => {
-            if (/\s+/.test(part)) return part
-            return part.length > 0 ? part[0].toUpperCase() + part.slice(1) : ""
-          }).join("")
-        } else if (v3Case === "toggle") {
-          workingText = workingText.split("").map(c =>
-            c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()
-          ).join("")
-        }
-      }
-
-      // 3. Render Output (Literal, no extra normalization)
-      setResult(workingText)
-      setBatchEditWord(null) // Reset edit state on new process
-      const elapsed = ((performance.now() - start) / 1000).toFixed(1)
-      setProcessTime(elapsed)
-      setStatus({ state: "success", messageKey: "statusDone" })
+      setStatus({ state: "idle", messageKey: "statusReady" })
       return
     }
 
@@ -773,86 +711,20 @@ export function TranscriptionForm() {
         </div>
 
         {version === "v3" ? (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-4 p-4 bg-secondary/30 border border-border rounded-lg">
-              <div className="flex flex-col gap-1.5">
-                <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
-                  {t("filterLabel")}
-                </label>
-                <input
-                  type="text"
-                  value={v3Filter}
-                  onChange={(e) => setV3Filter(e.target.value)}
-                  placeholder={t("filterPlaceholder")}
-                  className="w-full bg-background border border-border rounded px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
-                />
-              </div>
+          <div className="flex flex-col items-center justify-center p-8 bg-secondary/10 border border-dashed border-border rounded-lg overflow-x-auto">
+            <pre className="font-mono text-[10px] sm:text-xs text-primary leading-tight text-center select-none">
+{`
+  ____ ___  __  __ ___ _   _  ____   ____   ___   ___  _   _
+ / ___/ _ \\|  \\/  |_ _| \\ | |/ ___| / ___| / _ \\ / _ \\| \\ | |
+| |  | | | | |\\/| || ||  \\| | |  _  \\___ \\| | | | | | |  \\| |
+| |__| |_| | |  | || || |\\  | |_| |  ___) | |_| | |_| | |\\  |
+ \\____\\___/|_|  |_|___|_| \\_|\\____| |____/ \\___/ \\___/|_| \\_|
 
-              <div className="flex flex-col gap-1.5">
-                <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
-                  {t("replaceLabel")}
-                </label>
-                <input
-                  type="text"
-                  value={v3Replace}
-                  onChange={(e) => setV3Replace(e.target.value)}
-                  placeholder={t("replacePlaceholder")}
-                  className="w-full bg-background border border-border rounded px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
-                  {t("caseLabel")}
-                </label>
-                <select
-                  value={v3Case}
-                  onChange={(e) => setV3Case(e.target.value as any)}
-                  className="w-full bg-background border border-border rounded px-2 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="none">{t("caseNone")}</option>
-                  <option value="sentence">Sentence case</option>
-                  <option value="lower">lowercase</option>
-                  <option value="upper">UPPERCASE</option>
-                  <option value="capital">Capitalize Each Word</option>
-                  <option value="toggle">tOGGLE cASE</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2 mt-1">
-                <label className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground cursor-pointer select-none uppercase font-bold tracking-tighter">
-                  <input
-                    type="checkbox"
-                    checked={v3CaseSensitive}
-                    onChange={(e) => setV3CaseSensitive(e.target.checked)}
-                    className="w-3 h-3 rounded border-border text-primary focus:ring-primary"
-                  />
-                  {t("caseSensitiveLabel")}
-                </label>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={process}
-                  className="font-mono text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-md hover:bg-primary/90 active:scale-[0.97] transition-all whitespace-nowrap cursor-pointer"
-                >
-                  {`${t("processButton")} \u2192`}
-                </button>
-                <button
-                  onClick={clearAll}
-                  className="font-mono text-xs font-medium bg-secondary text-foreground border border-border px-4 py-2.5 rounded-md hover:bg-secondary/80 active:scale-[0.97] transition-all whitespace-nowrap cursor-pointer"
-                >
-                  {t("clearButton")}
-                </button>
-              </div>
-              {status.state === "error" && status.messageKey === "statusNoFilter" && (
-                <span className="font-mono text-[10px] text-red-500 font-bold uppercase tracking-tight">
-                  {t("statusNoFilter")}
-                </span>
-              )}
-            </div>
+`}
+            </pre>
+            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.2em] mt-4 animate-pulse">
+              Under Development
+            </span>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-3">
