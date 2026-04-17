@@ -477,7 +477,7 @@ export function TranscriptionForm() {
         missingWords = !!validation.missingWords
 
         // AI Retry Loop
-        while (!isValid && currentRetry < 2) {
+        while (!isValid && currentRetry < 1) {
           currentRetry++
           setV2Status(prev => ({ ...prev, retryCount: currentRetry, masalah: currentMasalah }))
 
@@ -946,7 +946,7 @@ export function TranscriptionForm() {
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-muted-foreground italic">
                   {isProcessing ? (
-                    <>{t("statusProcessing")} {version === "v2.2" && v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/2</span>}</>
+                    <>{t("statusProcessing")} {version === "v2.2" && v2Status.retryCount > 0 && <span className="font-bold ml-1">retry {v2Status.retryCount}/1</span>}</>
                   ) : version === "v2.2" && v2Status.state !== "idle" ? (
                     <>
                       {v2Status.state === "valid" && `selesai. semua ${v2Status.totalSlashes} tanda baca sesuai posisi.`}
