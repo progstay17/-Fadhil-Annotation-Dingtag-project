@@ -19,16 +19,18 @@ type Provider = "groq" | "google" | "aiml" | "openrouter"
 const PROMPT_BIASA = `Perbaiki teks input. Semua output dalam satu paragraf.
 
 ATURAN:
-- Pertahankan gaya santai (gue, lu, nggak, dll)
+- Pertahankan gaya santai (gue, lu, nggak, dll) sesuai input
 - Tulis kata apa adanya — jangan ubah ke bentuk baku
 - Perbaiki typo, kapitalkan nama diri dan merek
 - Gabungkan kata ulang dengan hubung (pelan pelan → pelan-pelan)
-- Tambah atau ganti tanda baca seperlunya agar enak dibaca
+- Tambah atau ganti tanda baca sesuai EYD
 - Hapus dash (—), ganti dengan titik atau koma
 - Akhir kalimat hanya . ? !
 - Pertahankan kalimat menggantung jika ada di input
 
 Output: teks hasil saja, tanpa komentar.`
+
+const INSERT_PROMPT_TEMPLATE = PROMPT_BIASA
 
 const PROMPT_1 = `Kamu editor transkripsi audio. Lakukan DUA hal saja:
 1. Ganti setiap \\ dengan . , ! atau ? sesuai konteks
@@ -46,20 +48,6 @@ Output: teks hasil saja, tanpa komentar.
 Contoh:
 Input:  gue lagi di warung\\ mau beli nasi uduk\\ abis deh\\
 Output: Gue lagi di warung, mau beli nasi uduk. Abis deh.`
-
-const INSERT_PROMPT_TEMPLATE = `Perbaiki teks input. Semua output dalam satu paragraf.
-
-ATURAN:
-- Pertahankan gaya santai (gue, lu, nggak, dll)
-- Tulis kata apa adanya — jangan ubah ke bentuk baku
-- Perbaiki typo, kapitalkan nama diri dan merek
-- Gabungkan kata ulang dengan hubung (pelan pelan → pelan-pelan)
-- Tambah atau ganti tanda baca seperlunya agar enak dibaca
-- Hapus dash (—), ganti dengan titik atau koma
-- Akhir kalimat hanya . ? !
-- Pertahankan kalimat menggantung jika ada di input
-
-Output: teks hasil saja, tanpa komentar.`
 
 function getPrompt2(original: string, hasil: string, masalah: string[]) {
   return `Kamu adalah asisten editor transkripsi. Tugasmu adalah memperbaiki hasil transkripsi sebelumnya yang memiliki kesalahan posisi tanda baca.
@@ -87,7 +75,7 @@ function normalizeInput(text: string): string {
     .replace(/\\\\+/g, "\\")
     .replace(/(\S)\\(\S)/g, "$1\\ $2")
     .replace(/\s+\\(\S)/g, "\\ $1")
-    .replace(/\s+\\\s+/g, "\\ ")
+    .replace(/\s+\\\\s+/g, "\\ ")
 }
 
 function stripExtraText(text: string): string {
@@ -329,6 +317,7 @@ export function TranscriptionForm() {
     totalSlashes: number
     fixerChanges: FixerChange[]
     wordCountMismatch: boolean
+    missingWords?: boolean
   }>({
     state: "idle",
     retryCount: 0,
@@ -336,6 +325,7 @@ export function TranscriptionForm() {
     totalSlashes: 0,
     fixerChanges: [],
     wordCountMismatch: false,
+    missingWords: false
   })
   const [showFixerDiff, setShowFixerDiff] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
@@ -344,6 +334,7 @@ export function TranscriptionForm() {
   const [v3Filter, setV3Filter] = useState("")
   const [v3Replace, setV3Replace] = useState("")
   const [v3Case, setV3Case] = useState<"none" | "sentence" | "lower" | "upper" | "capital" | "toggle">("none")
+  const [v3CaseSensitive, setV3CaseSensitive] = useState(false)
   const [batchEditWord, setBatchEditWord] = useState<string | null>(null)
 
   useEffect(() => {
@@ -371,6 +362,7 @@ export function TranscriptionForm() {
     setV3Filter("")
     setV3Replace("")
     setV3Case("none")
+    setV3CaseSensitive(false)
     setBatchEditWord(null)
   }, [])
 
@@ -425,11 +417,10 @@ export function TranscriptionForm() {
       if (hasFilter) {
         const replacement = v3Replace
         for (const token of tokens) {
-          let index = workingText.indexOf(token)
-          while (index !== -1) {
-            workingText = workingText.substring(0, index) + replacement + workingText.substring(index + token.length)
-            index = workingText.indexOf(token, index + replacement.length)
-          }
+          const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          const regex = new RegExp(escapedToken, v3CaseSensitive ? "g" : "gi")
+          // Use a function for replacement to ensure the string is treated literally (ignore $ signs)
+          workingText = workingText.replace(regex, () => replacement)
         }
       }
 
@@ -441,15 +432,16 @@ export function TranscriptionForm() {
           workingText = workingText.toUpperCase()
         } else if (v3Case === "sentence") {
           // Capitalize first character, rest lowercase
-          workingText = workingText.toLowerCase()
-          if (workingText.length > 0) {
-            workingText = workingText[0].toUpperCase() + workingText.slice(1)
-          }
+          // Note: spec says capitalize first character, rest lowercase
+          const firstChar = workingText.trim().charAt(0).toUpperCase()
+          const rest = workingText.trim().slice(1).toLowerCase()
+          workingText = firstChar + rest
         } else if (v3Case === "capital") {
           // First letter of every word uppercase, rest lowercase
-          workingText = workingText.toLowerCase().split(" ").map(word =>
-            word.length > 0 ? word[0].toUpperCase() + word.slice(1) : ""
-          ).join(" ")
+          workingText = workingText.toLowerCase().split(/(\s+)/).map(part => {
+            if (/\s+/.test(part)) return part
+            return part.length > 0 ? part[0].toUpperCase() + part.slice(1) : ""
+          }).join("")
         } else if (v3Case === "toggle") {
           workingText = workingText.split("").map(c =>
             c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()
@@ -780,103 +772,131 @@ export function TranscriptionForm() {
           </div>
         </div>
 
-        {version === "v3" && (
-          <div className="flex flex-col gap-4 p-4 bg-secondary/30 border border-border rounded-lg">
-            <div className="flex flex-col gap-1.5">
-              <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
-                {t("filterLabel")}
-              </label>
-              <input
-                type="text"
-                value={v3Filter}
-                onChange={(e) => setV3Filter(e.target.value)}
-                placeholder={t("filterPlaceholder")}
-                className="w-full bg-background border border-border rounded px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
-              />
+        {version === "v3" ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 p-4 bg-secondary/30 border border-border rounded-lg">
+              <div className="flex flex-col gap-1.5">
+                <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                  {t("filterLabel")}
+                </label>
+                <input
+                  type="text"
+                  value={v3Filter}
+                  onChange={(e) => setV3Filter(e.target.value)}
+                  placeholder={t("filterPlaceholder")}
+                  className="w-full bg-background border border-border rounded px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                  {t("replaceLabel")}
+                </label>
+                <input
+                  type="text"
+                  value={v3Replace}
+                  onChange={(e) => setV3Replace(e.target.value)}
+                  placeholder={t("replacePlaceholder")}
+                  className="w-full bg-background border border-border rounded px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                  {t("caseLabel")}
+                </label>
+                <select
+                  value={v3Case}
+                  onChange={(e) => setV3Case(e.target.value as any)}
+                  className="w-full bg-background border border-border rounded px-2 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="none">{t("caseNone")}</option>
+                  <option value="sentence">Sentence case</option>
+                  <option value="lower">lowercase</option>
+                  <option value="upper">UPPERCASE</option>
+                  <option value="capital">Capitalize Each Word</option>
+                  <option value="toggle">tOGGLE cASE</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 mt-1">
+                <label className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground cursor-pointer select-none uppercase font-bold tracking-tighter">
+                  <input
+                    type="checkbox"
+                    checked={v3CaseSensitive}
+                    onChange={(e) => setV3CaseSensitive(e.target.checked)}
+                    className="w-3 h-3 rounded border-border text-primary focus:ring-primary"
+                  />
+                  {t("caseSensitiveLabel")}
+                </label>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
-                {t("replaceLabel")}
-              </label>
-              <input
-                type="text"
-                value={v3Replace}
-                onChange={(e) => setV3Replace(e.target.value)}
-                placeholder={t("replacePlaceholder")}
-                className="w-full bg-background border border-border rounded px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
-              />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={process}
+                  className="font-mono text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-md hover:bg-primary/90 active:scale-[0.97] transition-all whitespace-nowrap cursor-pointer"
+                >
+                  {`${t("processButton")} \u2192`}
+                </button>
+                <button
+                  onClick={clearAll}
+                  className="font-mono text-xs font-medium bg-secondary text-foreground border border-border px-4 py-2.5 rounded-md hover:bg-secondary/80 active:scale-[0.97] transition-all whitespace-nowrap cursor-pointer"
+                >
+                  {t("clearButton")}
+                </button>
+              </div>
+              {status.state === "error" && status.messageKey === "statusNoFilter" && (
+                <span className="font-mono text-[10px] text-red-500 font-bold uppercase tracking-tight">
+                  {t("statusNoFilter")}
+                </span>
+              )}
             </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
-                {t("caseLabel")}
-              </label>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs text-muted-foreground">{t("modelLabel")}:</span>
               <select
-                value={v3Case}
-                onChange={(e) => setV3Case(e.target.value as any)}
-                className="w-full bg-background border border-border rounded px-2 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary"
+                value={provider}
+                onChange={(e) => setProvider(e.target.value as Provider)}
+                disabled={isProcessing}
+                className="font-mono text-xs bg-secondary text-foreground border border-border rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <option value="none">{t("caseNone")}</option>
-                <option value="sentence">Sentence case</option>
-                <option value="lower">lowercase</option>
-                <option value="upper">UPPERCASE</option>
-                <option value="capital">Capitalize Each Word</option>
-                <option value="toggle">tOGGLE cASE</option>
+                <option value="google">{t("modelGoogle")}</option>
+                <option value="aiml">{t("modelAiml")}</option>
+                <option value="openrouter">{t("modelOpenRouter")}</option>
+                <option value="groq">{t("modelGroq")}</option>
               </select>
             </div>
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-muted-foreground">{t("modelLabel")}:</span>
-            <select
-              value={provider}
-              onChange={(e) => setProvider(e.target.value as Provider)}
+            <button
+              onClick={process}
               disabled={isProcessing}
-              className="font-mono text-xs bg-secondary text-foreground border border-border rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
+              className="font-mono text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-md hover:bg-primary/90 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap cursor-pointer"
             >
-              <option value="google">{t("modelGoogle")}</option>
-              <option value="aiml">{t("modelAiml")}</option>
-              <option value="openrouter">{t("modelOpenRouter")}</option>
-              <option value="groq">{t("modelGroq")}</option>
-            </select>
+              {isProcessing ? t("processingButton") : `${t("processButton")} \u2192`}
+            </button>
+            {version === "biasa" && (
+              <button
+                onClick={insertPrompt}
+                disabled={isProcessing || !input.trim()}
+                className="font-mono text-xs font-medium bg-secondary text-foreground border border-border px-4 py-2.5 rounded-md hover:bg-secondary/80 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap cursor-pointer"
+              >
+                {promptCopied ? t("promptCopied") : t("insertPromptButton")}
+              </button>
+            )}
+            {(version === "v1" || version === "v2.2") && (
+              <button
+                onClick={flatten}
+                disabled={isProcessing || !input.trim()}
+                className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer"
+              >
+                {t("flatTextButton")}
+              </button>
+            )}
           </div>
-        <button
-          onClick={process}
-          disabled={isProcessing}
-          className="font-mono text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-md hover:bg-primary/90 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap cursor-pointer"
-        >
-          {isProcessing ? t("processingButton") : `${t("processButton")} \u2192`}
-        </button>
-        {version === "biasa" && (
-          <button
-            onClick={insertPrompt}
-            disabled={isProcessing || !input.trim()}
-            className="font-mono text-xs font-medium bg-secondary text-foreground border border-border px-4 py-2.5 rounded-md hover:bg-secondary/80 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap cursor-pointer"
-          >
-            {promptCopied ? t("promptCopied") : t("insertPromptButton")}
-          </button>
         )}
-        {(version === "v1" || version === "v2.2") && (
-          <button
-            onClick={flatten}
-            disabled={isProcessing || !input.trim()}
-            className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer"
-          >
-            {t("flatTextButton")}
-          </button>
-        )}
-        {version === "v3" && (
-          <button
-            onClick={clearAll}
-            className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-4 py-2.5 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer"
-          >
-            {t("clearButton")}
-          </button>
-        )}
-      </div>
       </div>
 
       <div className="w-full h-px bg-border" />
@@ -979,13 +999,13 @@ export function TranscriptionForm() {
               </div>
             ) : version === "v3" ? (
               <div
-                className="flex flex-wrap gap-x-1 gap-y-0.5 outline-none"
+                className="flex flex-wrap gap-x-0.5 gap-y-0.5 outline-none"
                 onClick={(e) => {
                   if (e.target === e.currentTarget) setBatchEditWord(null)
                 }}
               >
                 {result.split(/(\s+)/).map((part, i) => {
-                  if (/\s+/.test(part)) return <span key={i}>{part}</span>
+                  if (/\s+/.test(part)) return <span key={i} className="whitespace-pre">{part}</span>
 
                   const isHighlighted = batchEditWord !== null && part === batchEditWord
                   return (
@@ -993,21 +1013,29 @@ export function TranscriptionForm() {
                       key={i}
                       contentEditable={isHighlighted}
                       suppressContentEditableWarning
+                      data-batch-word={part}
                       onClick={(e) => {
                         e.stopPropagation()
                         setBatchEditWord(part)
                       }}
-                      onBlur={() => setBatchEditWord(null)}
-                      onInput={(e) => {
+                      onBlur={(e) => {
                         const newWord = e.currentTarget.innerText
-                        // Escape regex special chars for exact literal match
-                        const escaped = part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-                        // Match exact word with boundaries to prevent partial matches like "gue" in "guean"
-                        // but since we split by whitespace, we can just use global replace on tokens
+                        // Commit the batch changes to the actual state
                         const parts = result.split(/(\s+)/)
                         const updated = parts.map(p => p === part ? newWord : p).join("")
                         setResult(updated)
-                        setBatchEditWord(newWord)
+                        setBatchEditWord(null)
+                      }}
+                      onInput={(e) => {
+                        const newWord = e.currentTarget.innerText
+                        // Real-time batch update of other identical instances in the DOM
+                        // We use a data attribute to find matching spans
+                        const matchingSpans = document.querySelectorAll(`[data-batch-word="${part}"]`)
+                        matchingSpans.forEach(el => {
+                          if (el !== e.currentTarget) {
+                            (el as HTMLElement).innerText = newWord
+                          }
+                        })
                       }}
                       className={`px-0.5 rounded transition-colors cursor-text border border-transparent ${
                         isHighlighted
