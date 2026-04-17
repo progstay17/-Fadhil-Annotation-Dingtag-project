@@ -290,6 +290,21 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
     }
   }
 
+  // FINAL CAPITALIZATION PASS (Rule: First word and words after . ! ? always capitalized)
+  for (let i = 0; i < finalWordsArray.length; i++) {
+    const word = finalWordsArray[i]
+    const shouldCapitalize = i === 0 || (i > 0 && /[.!?]$/.test(finalWordsArray[i - 1]))
+
+    if (shouldCapitalize && /^[a-z]/.test(word)) {
+      const capitalized = word[0].toUpperCase() + word.slice(1)
+      finalWordsArray[i] = capitalized
+      // Track as change if it wasn't already tracked
+      if (word !== capitalized) {
+        changes.push({ original: word, fixed: capitalized })
+      }
+    }
+  }
+
   return { result: finalWordsArray.join(" "), changes, wordCountMismatch }
 }
 
