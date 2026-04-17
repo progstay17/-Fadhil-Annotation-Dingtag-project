@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { TranscriptionCard } from "./transcription-card"
+import { FilterCustom } from "./filter-custom"
 import { StatusIndicator, StatusState } from "./status-indicator"
 import { calculateScoring, ScoringResult } from "@/lib/scoring"
 import { Kbd } from "@/components/ui/kbd"
@@ -710,69 +711,60 @@ export function TranscriptionForm() {
           </div>
         </div>
 
-        {version === "v3" ? (
-          <div className="flex flex-col items-center justify-center p-8 bg-secondary/10 border border-dashed border-border rounded-lg overflow-x-auto">
-            <pre className="font-mono text-[10px] sm:text-xs text-primary leading-tight text-center select-none">
-{`
-  ____ ___  __  __ ___ _   _  ____   ____   ___   ___  _   _
- / ___/ _ \\|  \\/  |_ _| \\ | |/ ___| / ___| / _ \\ / _ \\| \\ | |
-| |  | | | | |\\/| || ||  \\| | |  _  \\___ \\| | | | | | |  \\| |
-| |__| |_| | |  | || || |\\  | |_| |  ___) | |_| | |_| | |\\  |
- \\____\\___/|_|  |_|___|_| \\_|\\____| |____/ \\___/ \\___/|_| \\_|
+        <div className={version === "v3" ? "block" : "hidden"}>
+          <FilterCustom
+            input={input}
+            setInput={setInput}
+            onClear={clearAll}
+          />
+        </div>
 
-`}
-            </pre>
-            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.2em] mt-4 animate-pulse">
-              Under Development
-            </span>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-muted-foreground">{t("modelLabel")}:</span>
-              <select
-                value={provider}
-                onChange={(e) => setProvider(e.target.value as Provider)}
-                disabled={isProcessing}
-                className="font-mono text-xs bg-secondary text-foreground border border-border rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <option value="google">{t("modelGoogle")}</option>
-                <option value="aiml">{t("modelAiml")}</option>
-                <option value="openrouter">{t("modelOpenRouter")}</option>
-                <option value="groq">{t("modelGroq")}</option>
-              </select>
-            </div>
-            <button
-              onClick={process}
+        <div className={version !== "v3" ? "flex flex-wrap items-center gap-3" : "hidden"}>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-muted-foreground">{t("modelLabel")}:</span>
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as Provider)}
               disabled={isProcessing}
-              className="font-mono text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-md hover:bg-primary/90 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap cursor-pointer"
+              className="font-mono text-xs bg-secondary text-foreground border border-border rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {isProcessing ? t("processingButton") : `${t("processButton")} \u2192`}
-            </button>
-            {version === "biasa" && (
-              <button
-                onClick={insertPrompt}
-                disabled={isProcessing || !input.trim()}
-                className="font-mono text-xs font-medium bg-secondary text-foreground border border-border px-4 py-2.5 rounded-md hover:bg-secondary/80 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap cursor-pointer"
-              >
-                {promptCopied ? t("promptCopied") : t("insertPromptButton")}
-              </button>
-            )}
-            {(version === "v1" || version === "v2.2") && (
-              <button
-                onClick={flatten}
-                disabled={isProcessing || !input.trim()}
-                className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer"
-              >
-                {t("flatTextButton")}
-              </button>
-            )}
+              <option value="google">{t("modelGoogle")}</option>
+              <option value="aiml">{t("modelAiml")}</option>
+              <option value="openrouter">{t("modelOpenRouter")}</option>
+              <option value="groq">{t("modelGroq")}</option>
+            </select>
           </div>
-        )}
+          <button
+            onClick={process}
+            disabled={isProcessing}
+            className="font-mono text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-md hover:bg-primary/90 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap cursor-pointer"
+          >
+            {isProcessing ? t("processingButton") : `${t("processButton")} \u2192`}
+          </button>
+          {version === "biasa" && (
+            <button
+              onClick={insertPrompt}
+              disabled={isProcessing || !input.trim()}
+              className="font-mono text-xs font-medium bg-secondary text-foreground border border-border px-4 py-2.5 rounded-md hover:bg-secondary/80 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap cursor-pointer"
+            >
+              {promptCopied ? t("promptCopied") : t("insertPromptButton")}
+            </button>
+          )}
+          {(version === "v1" || version === "v2.2") && (
+            <button
+              onClick={flatten}
+              disabled={isProcessing || !input.trim()}
+              className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer"
+            >
+              {t("flatTextButton")}
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="w-full h-px bg-border" />
+      {version !== "v3" && <div className="w-full h-px bg-border" />}
 
+      {version !== "v3" && (
       <TranscriptionCard
         label={
           <div className="flex items-center gap-2">
@@ -965,6 +957,7 @@ export function TranscriptionForm() {
           )}
         </div>
       </TranscriptionCard>
+      )}
 
       {version === "v2.2" && v2Status.fixerChanges.length > 0 && (
         <div className="bg-secondary/50 border border-border rounded-lg overflow-hidden">
