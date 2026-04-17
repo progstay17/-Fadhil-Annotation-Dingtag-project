@@ -344,6 +344,7 @@ export function TranscriptionForm() {
   const [v3Filter, setV3Filter] = useState("")
   const [v3Replace, setV3Replace] = useState("")
   const [v3Case, setV3Case] = useState<"none" | "sentence" | "lower" | "upper" | "capital" | "toggle">("none")
+  const [v3CaseSensitive, setV3CaseSensitive] = useState(false)
   const [batchEditWord, setBatchEditWord] = useState<string | null>(null)
 
   useEffect(() => {
@@ -371,6 +372,7 @@ export function TranscriptionForm() {
     setV3Filter("")
     setV3Replace("")
     setV3Case("none")
+    setV3CaseSensitive(false)
     setBatchEditWord(null)
   }, [])
 
@@ -425,11 +427,10 @@ export function TranscriptionForm() {
       if (hasFilter) {
         const replacement = v3Replace
         for (const token of tokens) {
-          let index = workingText.indexOf(token)
-          while (index !== -1) {
-            workingText = workingText.substring(0, index) + replacement + workingText.substring(index + token.length)
-            index = workingText.indexOf(token, index + replacement.length)
-          }
+          const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          const regex = new RegExp(escapedToken, v3CaseSensitive ? "g" : "gi")
+          // Use a function for replacement to ensure the string is treated literally (ignore $ signs)
+          workingText = workingText.replace(regex, () => replacement)
         }
       }
 
@@ -441,15 +442,16 @@ export function TranscriptionForm() {
           workingText = workingText.toUpperCase()
         } else if (v3Case === "sentence") {
           // Capitalize first character, rest lowercase
-          workingText = workingText.toLowerCase()
-          if (workingText.length > 0) {
-            workingText = workingText[0].toUpperCase() + workingText.slice(1)
-          }
+          // Note: spec says capitalize first character, rest lowercase
+          const firstChar = workingText.trim().charAt(0).toUpperCase()
+          const rest = workingText.trim().slice(1).toLowerCase()
+          workingText = firstChar + rest
         } else if (v3Case === "capital") {
           // First letter of every word uppercase, rest lowercase
-          workingText = workingText.toLowerCase().split(" ").map(word =>
-            word.length > 0 ? word[0].toUpperCase() + word.slice(1) : ""
-          ).join(" ")
+          workingText = workingText.toLowerCase().split(/(\s+)/).map(part => {
+            if (/\s+/.test(part)) return part
+            return part.length > 0 ? part[0].toUpperCase() + part.slice(1) : ""
+          }).join("")
         } else if (v3Case === "toggle") {
           workingText = workingText.split("").map(c =>
             c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()
@@ -826,6 +828,18 @@ export function TranscriptionForm() {
                   <option value="toggle">tOGGLE cASE</option>
                 </select>
               </div>
+
+              <div className="flex items-center gap-2 mt-1">
+                <label className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground cursor-pointer select-none uppercase font-bold tracking-tighter">
+                  <input
+                    type="checkbox"
+                    checked={v3CaseSensitive}
+                    onChange={(e) => setV3CaseSensitive(e.target.checked)}
+                    className="w-3 h-3 rounded border-border text-primary focus:ring-primary"
+                  />
+                  {t("caseSensitiveLabel")}
+                </label>
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -1016,11 +1030,22 @@ export function TranscriptionForm() {
                       onBlur={() => setBatchEditWord(null)}
                       onInput={(e) => {
                         const newWord = e.currentTarget.innerText
-                        // Use string.split and map for token-based replacement to avoid regex issues
+                        // Real-time batch update of other identical instances in the DOM
+                        // We use a data attribute to find matching spans
+                        const matchingSpans = document.querySelectorAll(`[data-batch-word="${part}"]`)
+                        matchingSpans.forEach(el => {
+                          if (el !== e.currentTarget) {
+                            (el as HTMLElement).innerText = newWord
+                          }
+                        })
+                      }}
+                      onBlur={(e) => {
+                        const newWord = e.currentTarget.innerText
+                        // Commit the batch changes to the actual state
                         const parts = result.split(/(\s+)/)
                         const updated = parts.map(p => p === part ? newWord : p).join("")
                         setResult(updated)
-                        setBatchEditWord(newWord)
+                        setBatchEditWord(null)
                       }}
                       className={`px-0.5 rounded transition-colors cursor-text border border-transparent ${
                         isHighlighted
