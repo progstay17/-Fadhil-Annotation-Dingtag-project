@@ -71,7 +71,7 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
     return tokens.map((token, i) => {
       const isRepeated = indices.includes(i)
       if (isRepeated) {
-        return <mark key={i} className="bg-amber-200 dark:bg-amber-500/40 text-transparent rounded-sm">{token}</mark>
+        return <mark key={i} className="bg-yellow-200 dark:bg-yellow-800 dark:text-yellow-100 text-transparent rounded-sm">{token}</mark>
       }
       return <span key={i}>{token}</span>
     })
@@ -286,7 +286,7 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
 
         <div className="p-4 font-mono text-sm leading-relaxed text-foreground min-h-20 whitespace-pre-wrap break-words">
           {currentOutput ? (
-            <div className="flex flex-wrap gap-x-0 gap-y-1">
+            <div className="inline">
               {currentOutput.split(/(\s+)/).map((part, i) => {
                 if (/\s+/.test(part)) return <span key={i} className="whitespace-pre">{part}</span>
 

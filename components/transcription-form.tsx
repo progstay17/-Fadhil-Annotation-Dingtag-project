@@ -579,6 +579,7 @@ export function TranscriptionForm() {
 
   return (
     <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl flex flex-col gap-4">
+      {version !== "v3" && (
       <TranscriptionCard
         label={
           <div className="flex items-center gap-2">
@@ -620,6 +621,7 @@ export function TranscriptionForm() {
           className="w-full bg-transparent border-none outline-none font-mono text-sm leading-relaxed text-foreground resize-none min-h-40 placeholder:text-muted-foreground"
         />
       </TranscriptionCard>
+      )}
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-2">
@@ -861,57 +863,6 @@ export function TranscriptionForm() {
                   </span>
                 ))}
               </div>
-            ) : version === "v3" ? (
-              <div
-                className="flex flex-wrap gap-x-0.5 gap-y-0.5 outline-none"
-                onClick={(e) => {
-                  if (e.target === e.currentTarget) setBatchEditWord(null)
-                }}
-              >
-                {result.split(/(\s+)/).map((part, i) => {
-                  if (/\s+/.test(part)) return <span key={i} className="whitespace-pre">{part}</span>
-
-                  const isHighlighted = batchEditWord !== null && part === batchEditWord
-                  return (
-                    <span
-                      key={i}
-                      contentEditable={isHighlighted}
-                      suppressContentEditableWarning
-                      data-batch-word={part}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setBatchEditWord(part)
-                      }}
-                      onBlur={(e) => {
-                        const newWord = e.currentTarget.innerText
-                        // Commit the batch changes to the actual state
-                        const parts = result.split(/(\s+)/)
-                        const updated = parts.map(p => p === part ? newWord : p).join("")
-                        setResult(updated)
-                        setBatchEditWord(null)
-                      }}
-                      onInput={(e) => {
-                        const newWord = e.currentTarget.innerText
-                        // Real-time batch update of other identical instances in the DOM
-                        // We use a data attribute to find matching spans
-                        const matchingSpans = document.querySelectorAll(`[data-batch-word="${part}"]`)
-                        matchingSpans.forEach(el => {
-                          if (el !== e.currentTarget) {
-                            (el as HTMLElement).innerText = newWord
-                          }
-                        })
-                      }}
-                      className={`px-0.5 rounded transition-colors cursor-text border border-transparent ${
-                        isHighlighted
-                          ? "bg-primary/20 text-primary border-primary/30 ring-1 ring-primary/20"
-                          : "hover:bg-secondary/80"
-                      }`}
-                    >
-                      {part}
-                    </span>
-                  )
-                })}
-              </div>
             ) : result
           ) : (
             <span className="text-muted-foreground">
@@ -990,7 +941,7 @@ export function TranscriptionForm() {
         </div>
       )}
 
-      {scoring && (
+      {scoring && version !== "v3" && (
         <div className="bg-secondary/30 border border-border rounded-lg p-4 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider">
