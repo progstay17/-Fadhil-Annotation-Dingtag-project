@@ -344,6 +344,7 @@ export function TranscriptionForm() {
   const [v3Filter, setV3Filter] = useState("")
   const [v3Replace, setV3Replace] = useState("")
   const [v3Case, setV3Case] = useState<"none" | "sentence" | "lower" | "upper" | "capital" | "toggle">("none")
+  const [batchEditWord, setBatchEditWord] = useState<string | null>(null)
 
   useEffect(() => {
     const hasSeen = localStorage.getItem("tb_tutorial_seen")
@@ -366,6 +367,11 @@ export function TranscriptionForm() {
     setV2Status({ state: "idle", retryCount: 0, masalah: [], totalSlashes: 0, fixerChanges: [], wordCountMismatch: false })
     setShowFixerDiff(false)
     setProcessTime(null)
+    // Clear V3 state
+    setV3Filter("")
+    setV3Replace("")
+    setV3Case("none")
+    setBatchEditWord(null)
   }, [])
 
   const pasteFromClipboard = useCallback(async () => {
@@ -434,9 +440,16 @@ export function TranscriptionForm() {
         } else if (v3Case === "upper") {
           workingText = workingText.toUpperCase()
         } else if (v3Case === "sentence") {
-          workingText = workingText.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g, c => c.toUpperCase())
+          // Capitalize first character, rest lowercase
+          workingText = workingText.toLowerCase()
+          if (workingText.length > 0) {
+            workingText = workingText[0].toUpperCase() + workingText.slice(1)
+          }
         } else if (v3Case === "capital") {
-          workingText = workingText.replace(/\b\w/g, c => c.toUpperCase())
+          // First letter of every word uppercase, rest lowercase
+          workingText = workingText.toLowerCase().split(" ").map(word =>
+            word.length > 0 ? word[0].toUpperCase() + word.slice(1) : ""
+          ).join(" ")
         } else if (v3Case === "toggle") {
           workingText = workingText.split("").map(c =>
             c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()
@@ -446,6 +459,7 @@ export function TranscriptionForm() {
 
       // 3. Render Output (Literal, no extra normalization)
       setResult(workingText)
+      setBatchEditWord(null) // Reset edit state on new process
       const elapsed = ((performance.now() - start) / 1000).toFixed(1)
       setProcessTime(elapsed)
       setStatus({ state: "success", messageKey: "statusDone" })
@@ -794,26 +808,22 @@ export function TranscriptionForm() {
               />
             </div>
 
-            <div className="h-px bg-border/50" />
-
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
                 {t("caseLabel")}
               </label>
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {(["none", "sentence", "lower", "upper", "capital", "toggle"] as const).map((opt) => (
-                  <label key={opt} className="flex items-center gap-2 font-mono text-xs cursor-pointer select-none">
-                    <input
-                      type="radio"
-                      name="v3Case"
-                      checked={v3Case === opt}
-                      onChange={() => setV3Case(opt)}
-                      className="w-3 h-3 border-border text-primary focus:ring-primary"
-                    />
-                    {t(`case${opt.charAt(0).toUpperCase() + opt.slice(1)}` as any)}
-                  </label>
-                ))}
-              </div>
+              <select
+                value={v3Case}
+                onChange={(e) => setV3Case(e.target.value as any)}
+                className="w-full bg-background border border-border rounded px-2 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="none">{t("caseNone")}</option>
+                <option value="sentence">Sentence case</option>
+                <option value="lower">lowercase</option>
+                <option value="upper">UPPERCASE</option>
+                <option value="capital">Capitalize Each Word</option>
+                <option value="toggle">tOGGLE cASE</option>
+              </select>
             </div>
           </div>
         )}
@@ -840,7 +850,7 @@ export function TranscriptionForm() {
         >
           {isProcessing ? t("processingButton") : `${t("processButton")} \u2192`}
         </button>
-        {version === "biasa" ? (
+        {version === "biasa" && (
           <button
             onClick={insertPrompt}
             disabled={isProcessing || !input.trim()}
@@ -848,13 +858,22 @@ export function TranscriptionForm() {
           >
             {promptCopied ? t("promptCopied") : t("insertPromptButton")}
           </button>
-        ) : (
+        )}
+        {(version === "v1" || version === "v2.2") && (
           <button
             onClick={flatten}
             disabled={isProcessing || !input.trim()}
             className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer"
           >
             {t("flatTextButton")}
+          </button>
+        )}
+        {version === "v3" && (
+          <button
+            onClick={clearAll}
+            className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-4 py-2.5 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer"
+          >
+            {t("clearButton")}
           </button>
         )}
       </div>
@@ -957,6 +976,49 @@ export function TranscriptionForm() {
                     {seg.text}
                   </span>
                 ))}
+              </div>
+            ) : version === "v3" ? (
+              <div
+                className="flex flex-wrap gap-x-1 gap-y-0.5 outline-none"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) setBatchEditWord(null)
+                }}
+              >
+                {result.split(/(\s+)/).map((part, i) => {
+                  if (/\s+/.test(part)) return <span key={i}>{part}</span>
+
+                  const isHighlighted = batchEditWord !== null && part === batchEditWord
+                  return (
+                    <span
+                      key={i}
+                      contentEditable={isHighlighted}
+                      suppressContentEditableWarning
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setBatchEditWord(part)
+                      }}
+                      onBlur={() => setBatchEditWord(null)}
+                      onInput={(e) => {
+                        const newWord = e.currentTarget.innerText
+                        // Escape regex special chars for exact literal match
+                        const escaped = part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                        // Match exact word with boundaries to prevent partial matches like "gue" in "guean"
+                        // but since we split by whitespace, we can just use global replace on tokens
+                        const parts = result.split(/(\s+)/)
+                        const updated = parts.map(p => p === part ? newWord : p).join("")
+                        setResult(updated)
+                        setBatchEditWord(newWord)
+                      }}
+                      className={`px-0.5 rounded transition-colors cursor-text border border-transparent ${
+                        isHighlighted
+                          ? "bg-primary/20 text-primary border-primary/30 ring-1 ring-primary/20"
+                          : "hover:bg-secondary/80"
+                      }`}
+                    >
+                      {part}
+                    </span>
+                  )
+                })}
               </div>
             ) : result
           ) : (

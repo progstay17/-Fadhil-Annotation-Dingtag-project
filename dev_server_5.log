@@ -616,3 +616,210 @@ https://react.dev/link/hydration-mismatch
   23 |             {label}
   24 |           </div>
   25 |           {hint && (
+ GET / 200 in 211ms (next.js: 21ms, application-code: 191ms)
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandlerOld focusAndScrollRef={{scrollRef:null, ...}} cacheNode={{rsc:{...}, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={{...}} forbidden={undefined} unauthorized={undefined}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={{...}} forbidden={undefined} unauthorized={undefined} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <InnerLayoutRouter url="/" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+                    <SegmentViewNode type="page" pagePath="page.tsx">
+                      <SegmentTrieNode>
+                      <ClientPageRoot Component={function Home} serverProvidedParams={{...}}>
+                        <Home params={Promise} searchParams={Promise}>
+                          <main className="min-h-scre...">
+                            <header>
+                            <TranscriptionForm>
+                              <div
++                               className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl flex flex-col gap-4"
+-                               className="w-full max-w-3xl flex flex-col gap-4"
+                              >
+                                <TranscriptionCard label={<div>} hint={false} actions={<div>}>
+                                  <div className="w-full bg-...">
+                                    <div
++                                     className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justif..."
+-                                     className="px-4 py-2.5 border-b border-border flex items-center justify-between ..."
+                                    >
+                                      <div
++                                       className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0 flex-1"
+-                                       className="flex items-center gap-4 min-w-0 flex-1"
+                                      >
++                                       <div
++                                         className="font-mono text-[11px] text-muted-foreground uppercase tracking-wi..."
++                                       >
+-                                       <span
+-                                         className="font-mono text-[11px] text-muted-foreground uppercase tracking-wi..."
+-                                       >
+                                      ...
+                                    ...
+                                ...
+                            ...
+                    ...
+                  ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at TranscriptionCard (components/transcription-card.tsx:22:11)
+    at TranscriptionForm (components/transcription-form.tsx:651:7)
+    at Home (app/page.tsx:44:7)
+  20 |       <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justi...
+  21 |         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0 flex-1">
+> 22 |           <div className="font-mono text-[11px] text-muted-foreground uppercase tracking-w...
+     |           ^
+  23 |             {label}
+  24 |           </div>
+  25 |           {hint && (
+ GET / 200 in 88ms (next.js: 4ms, application-code: 85ms)
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandlerOld focusAndScrollRef={{scrollRef:null, ...}} cacheNode={{rsc:{...}, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={{...}} forbidden={undefined} unauthorized={undefined}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={{...}} forbidden={undefined} unauthorized={undefined} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <InnerLayoutRouter url="/" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+                    <SegmentViewNode type="page" pagePath="page.tsx">
+                      <SegmentTrieNode>
+                      <ClientPageRoot Component={function Home} serverProvidedParams={{...}}>
+                        <Home params={Promise} searchParams={Promise}>
+                          <main className="min-h-scre...">
+                            <header>
+                            <TranscriptionForm>
+                              <div
++                               className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl flex flex-col gap-4"
+-                               className="w-full max-w-3xl flex flex-col gap-4"
+                              >
+                                <TranscriptionCard label={<div>} hint={false} actions={<div>}>
+                                  <div className="w-full bg-...">
+                                    <div
++                                     className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justif..."
+-                                     className="px-4 py-2.5 border-b border-border flex items-center justify-between ..."
+                                    >
+                                      <div
++                                       className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0 flex-1"
+-                                       className="flex items-center gap-4 min-w-0 flex-1"
+                                      >
++                                       <div
++                                         className="font-mono text-[11px] text-muted-foreground uppercase tracking-wi..."
++                                       >
+-                                       <span
+-                                         className="font-mono text-[11px] text-muted-foreground uppercase tracking-wi..."
+-                                       >
+                                      ...
+                                    ...
+                                ...
+                            ...
+                    ...
+                  ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at TranscriptionCard (components/transcription-card.tsx:22:11)
+    at TranscriptionForm (components/transcription-form.tsx:651:7)
+    at Home (app/page.tsx:44:7)
+  20 |       <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justi...
+  21 |         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0 flex-1">
+> 22 |           <div className="font-mono text-[11px] text-muted-foreground uppercase tracking-w...
+     |           ^
+  23 |             {label}
+  24 |           </div>
+  25 |           {hint && (
+ GET / 200 in 70ms (next.js: 5ms, application-code: 65ms)
+[browser] Uncaught Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandlerOld focusAndScrollRef={{scrollRef:null, ...}} cacheNode={{rsc:{...}, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={{...}} forbidden={undefined} unauthorized={undefined}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={{...}} forbidden={undefined} unauthorized={undefined} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <InnerLayoutRouter url="/" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+                    <SegmentViewNode type="page" pagePath="page.tsx">
+                      <SegmentTrieNode>
+                      <ClientPageRoot Component={function Home} serverProvidedParams={{...}}>
+                        <Home params={Promise} searchParams={Promise}>
+                          <main className="min-h-scre...">
+                            <header>
+                            <TranscriptionForm>
+                              <div
++                               className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl flex flex-col gap-4"
+-                               className="w-full max-w-3xl flex flex-col gap-4"
+                              >
+                                <TranscriptionCard label={<div>} hint={false} actions={<div>}>
+                                  <div className="w-full bg-...">
+                                    <div
++                                     className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justif..."
+-                                     className="px-4 py-2.5 border-b border-border flex items-center justify-between ..."
+                                    >
+                                      <div
++                                       className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0 flex-1"
+-                                       className="flex items-center gap-4 min-w-0 flex-1"
+                                      >
++                                       <div
++                                         className="font-mono text-[11px] text-muted-foreground uppercase tracking-wi..."
++                                       >
+-                                       <span
+-                                         className="font-mono text-[11px] text-muted-foreground uppercase tracking-wi..."
+-                                       >
+                                      ...
+                                    ...
+                                ...
+                            ...
+                    ...
+                  ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at div (<anonymous>)
+    at TranscriptionCard (components/transcription-card.tsx:22:11)
+    at TranscriptionForm (components/transcription-form.tsx:651:7)
+    at Home (app/page.tsx:44:7)
+  20 |       <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justi...
+  21 |         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0 flex-1">
+> 22 |           <div className="font-mono text-[11px] text-muted-foreground uppercase tracking-w...
+     |           ^
+  23 |             {label}
+  24 |           </div>
+  25 |           {hint && (
