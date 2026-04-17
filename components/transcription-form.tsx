@@ -326,13 +326,9 @@ export function TranscriptionForm() {
   const [showTutorial, setShowTutorial] = useState(false)
 
   // Filter state
-  const [filters, setFilters] = useState({
-    punctuation: false,
-    symbols: false,
-    numbers: false,
-    letters: "none" as "none" | "remove" | "lower" | "upper"
-  })
-  const [batchEditEnabled, setBatchEditEnabled] = useState(false)
+  const [v3Filter, setV3Filter] = useState("")
+  const [v3Replace, setV3Replace] = useState("")
+  const [v3Case, setV3Case] = useState<"none" | "sentence" | "lower" | "upper" | "capital" | "toggle">("none")
 
   useEffect(() => {
     const hasSeen = localStorage.getItem("tb_tutorial_seen")
@@ -394,13 +390,36 @@ export function TranscriptionForm() {
 
     if (version === "v3") {
       let filtered = input
-      if (filters.punctuation) filtered = filtered.replace(/[.,!?;:]/g, "")
-      if (filters.symbols) filtered = filtered.replace(/[\\@#$%^&*()_=+\[\]{}|<>~`/]/g, "")
-      if (filters.numbers) filtered = filtered.replace(/[0-9]/g, "")
 
-      if (filters.letters === "remove") filtered = filtered.replace(/[a-zA-Z]/g, "")
-      else if (filters.letters === "lower") filtered = filtered.toLowerCase()
-      else if (filters.letters === "upper") filtered = filtered.toUpperCase()
+      // Literal Token Replacement (Exact & Case-sensitive)
+      const tokens = v3Filter.split(/\s+/).filter(t => t.length > 0)
+      const replacement = v3Replace
+
+      if (tokens.length > 0) {
+        for (const token of tokens) {
+          // Use a loop for literal replacement without regex
+          let index = filtered.indexOf(token)
+          while (index !== -1) {
+            filtered = filtered.substring(0, index) + replacement + filtered.substring(index + token.length)
+            index = filtered.indexOf(token, index + replacement.length)
+          }
+        }
+      }
+
+      // MS Word Style Case Conversion
+      if (v3Case === "lower") {
+        filtered = filtered.toLowerCase()
+      } else if (v3Case === "upper") {
+        filtered = filtered.toUpperCase()
+      } else if (v3Case === "sentence") {
+        filtered = filtered.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g, c => c.toUpperCase())
+      } else if (v3Case === "capital") {
+        filtered = filtered.replace(/\b\w/g, c => c.toUpperCase())
+      } else if (v3Case === "toggle") {
+        filtered = filtered.split("").map(c =>
+          c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()
+        ).join("")
+      }
 
       setResult(filtered.replace(/\s+/g, " ").trim())
       const elapsed = ((performance.now() - start) / 1000).toFixed(1)
@@ -648,8 +667,11 @@ export function TranscriptionForm() {
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex items-center gap-2">
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
                 {t("biasaTitle")}
+                <span className="text-[9px] font-bold text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
+                  {t("tagAnnotator")}
+                </span>
               </span>
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("biasaDesc")}
@@ -664,8 +686,11 @@ export function TranscriptionForm() {
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex items-center gap-2">
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
                 {t("v1Title")}
+                <span className="text-[9px] font-bold text-muted-foreground/60 bg-secondary px-1.5 py-0.5 rounded border border-border">
+                  {t("tagLessRecommended")}
+                </span>
               </span>
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("v1Desc")}
@@ -680,10 +705,15 @@ export function TranscriptionForm() {
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex items-center gap-2">
-                {t("v2Title")}
-                <span className="px-1.5 py-0.5 rounded-full bg-secondary text-[9px] font-bold uppercase tracking-tighter text-muted-foreground border border-border">
-                  Beta
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
+                <div className="flex items-center gap-2">
+                  {t("v2Title")}
+                  <span className="px-1.5 py-0.5 rounded-full bg-secondary text-[9px] font-bold uppercase tracking-tighter text-muted-foreground border border-border">
+                    Beta
+                  </span>
+                </div>
+                <span className="text-[9px] font-bold text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
+                  {t("tagRecommended")}
                 </span>
               </span>
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
@@ -699,8 +729,11 @@ export function TranscriptionForm() {
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex items-center gap-2">
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
                 {t("v3Title")}
+                <span className="text-[9px] font-bold text-purple-600/70 bg-purple-500/5 px-1.5 py-0.5 rounded border border-purple-500/10">
+                  {t("tagQC")}
+                </span>
               </span>
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("v3Desc")}
@@ -710,70 +743,54 @@ export function TranscriptionForm() {
         </div>
 
         {version === "v3" && (
-          <div className="flex flex-col gap-3 p-4 bg-secondary/30 border border-border rounded-lg">
-            <div className="flex flex-wrap gap-4">
-              <label className="flex items-center gap-2 font-mono text-xs cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={filters.punctuation}
-                  onChange={(e) => setFilters(f => ({ ...f, punctuation: e.target.checked }))}
-                  className="w-3 h-3 rounded border-border text-primary focus:ring-primary"
-                />
-                {t("filterPunctuation")}
+          <div className="flex flex-col gap-4 p-4 bg-secondary/30 border border-border rounded-lg">
+            <div className="flex flex-col gap-1.5">
+              <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                {t("filterLabel")}
               </label>
-              <label className="flex items-center gap-2 font-mono text-xs cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={filters.symbols}
-                  onChange={(e) => setFilters(f => ({ ...f, symbols: e.target.checked }))}
-                  className="w-3 h-3 rounded border-border text-primary focus:ring-primary"
-                />
-                {t("filterSymbols")}
+              <input
+                type="text"
+                value={v3Filter}
+                onChange={(e) => setV3Filter(e.target.value)}
+                placeholder={t("filterPlaceholder")}
+                className="w-full bg-background border border-border rounded px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                {t("replaceLabel")}
               </label>
-              <label className="flex items-center gap-2 font-mono text-xs cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={filters.numbers}
-                  onChange={(e) => setFilters(f => ({ ...f, numbers: e.target.checked }))}
-                  className="w-3 h-3 rounded border-border text-primary focus:ring-primary"
-                />
-                {t("filterNumbers")}
-              </label>
+              <input
+                type="text"
+                value={v3Replace}
+                onChange={(e) => setV3Replace(e.target.value)}
+                placeholder={t("replacePlaceholder")}
+                className="w-full bg-background border border-border rounded px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
+              />
             </div>
 
             <div className="h-px bg-border/50" />
 
             <div className="flex flex-col gap-2">
-              <span className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
-                {t("filterLetters")}
-              </span>
+              <label className="font-mono text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                {t("caseLabel")}
+              </label>
               <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {(["none", "remove", "lower", "upper"] as const).map((opt) => (
+                {(["none", "sentence", "lower", "upper", "capital", "toggle"] as const).map((opt) => (
                   <label key={opt} className="flex items-center gap-2 font-mono text-xs cursor-pointer select-none">
                     <input
                       type="radio"
-                      name="letterFormat"
-                      checked={filters.letters === opt}
-                      onChange={() => setFilters(f => ({ ...f, letters: opt }))}
+                      name="v3Case"
+                      checked={v3Case === opt}
+                      onChange={() => setV3Case(opt)}
                       className="w-3 h-3 border-border text-primary focus:ring-primary"
                     />
-                    {t(`filterLetters${opt.charAt(0).toUpperCase() + opt.slice(1)}` as any)}
+                    {t(`case${opt.charAt(0).toUpperCase() + opt.slice(1)}` as any)}
                   </label>
                 ))}
               </div>
             </div>
-
-            <div className="h-px bg-border/50" />
-
-            <label className="flex items-center gap-2 font-mono text-xs cursor-pointer select-none text-primary/80 hover:text-primary transition-colors">
-              <input
-                type="checkbox"
-                checked={batchEditEnabled}
-                onChange={(e) => setBatchEditEnabled(e.target.checked)}
-                className="w-3 h-3 rounded border-border text-primary focus:ring-primary"
-              />
-              {t("batchEditLabel")}
-            </label>
           </div>
         )}
 
@@ -914,25 +931,6 @@ export function TranscriptionForm() {
                     }
                   >
                     {seg.text}
-                  </span>
-                ))}
-              </div>
-            ) : version === "v3" && batchEditEnabled ? (
-              <div className="flex flex-wrap gap-x-1 gap-y-0.5">
-                {result.split(" ").map((word, i) => (
-                  <span
-                    key={i}
-                    onClick={() => {
-                      const newWord = prompt(`Ganti semua kata "${word}" dengan:`, word)
-                      if (newWord !== null && newWord !== word) {
-                        const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-                        const regex = new RegExp(`\\b${escapedWord}\\b`, "g")
-                        setResult(prev => prev.replace(regex, newWord))
-                      }
-                    }}
-                    className="hover:bg-primary/20 hover:text-primary px-0.5 rounded transition-colors cursor-pointer border border-transparent hover:border-primary/30"
-                  >
-                    {word}
                   </span>
                 ))}
               </div>
