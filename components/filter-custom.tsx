@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react"
 import { useLanguage } from "./language-provider"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { useTheme } from "next-themes"
 
 interface FilterCustomProps {
   input: string
@@ -15,6 +16,12 @@ type FormatMode = "none" | "sentence" | "lower" | "upper" | "capitalize" | "togg
 
 export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
   const { t } = useLanguage()
+  const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Pipeline State
   const [findValue, setFindValue] = useState("")
@@ -68,10 +75,23 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
 
   const renderOverlay = () => {
     const { tokens, indices } = getRepeatedWordsIndices(input)
+    const isDark = mounted && resolvedTheme === "dark"
+
     return tokens.map((token, i) => {
       const isRepeated = indices.includes(i)
       if (isRepeated) {
-        return <mark key={i} className="bg-yellow-200 dark:bg-transparent dark:invert text-transparent rounded-sm">{token}</mark>
+        return (
+          <mark
+            key={i}
+            className="bg-[#fef08a] dark:bg-transparent rounded-sm text-transparent"
+            style={{
+              backgroundColor: isDark ? 'transparent' : '#fef08a',
+              filter: isDark ? 'invert(1)' : 'none'
+            }}
+          >
+            {token}
+          </mark>
+        )
       }
       return <span key={i}>{token}</span>
     })
@@ -180,15 +200,6 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
         </div>
 
         <div className="relative min-h-40">
-          {/* Highlight Overlay */}
-          <div
-            ref={overlayRef}
-            className="absolute inset-0 p-4 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words pointer-events-none select-none overflow-hidden text-transparent"
-            aria-hidden="true"
-          >
-            {renderOverlay()}
-          </div>
-
           <textarea
             ref={textareaRef}
             value={input}
@@ -197,6 +208,15 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
             placeholder={t("inputPlaceholder")}
             className="w-full h-full min-h-40 p-4 bg-transparent border-none outline-none font-mono text-sm leading-relaxed text-foreground resize-none placeholder:text-muted-foreground relative z-10"
           />
+
+          {/* Highlight Overlay */}
+          <div
+            ref={overlayRef}
+            className="absolute inset-0 p-4 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words pointer-events-none select-none overflow-hidden text-transparent z-20"
+            aria-hidden="true"
+          >
+            {renderOverlay()}
+          </div>
         </div>
       </div>
 

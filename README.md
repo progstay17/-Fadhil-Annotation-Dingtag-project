@@ -1,185 +1,288 @@
-# Transcription Tool / 转录工具
+# DingTag Annotation Tool
 
-A web application for automatically correcting punctuation and Indonesian spelling (EYD) using AI. Built with Next.js and Groq AI.
-
-一个使用AI自动纠正标点符号和印尼语拼写（EYD）的网络应用程序。使用Next.js和Groq AI构建。
-
-## Features / 功能
-
-- Automatic punctuation correction / 自动标点符号纠正
-- Indonesian spelling (EYD) correction / 印尼语拼写纠正
-- Simple and responsive interface / 简洁响应式界面
-- Powered by Groq AI (LLaMA 3.3 70B) / 由Groq AI驱动
-
-## Tech Stack / 技术栈
-
-- **Framework:** Next.js 16
-- **AI:** Groq AI with AI SDK
-- **Styling:** Tailwind CSS 4
-- **UI Components:** shadcn/ui
+Fast Text Processing for Annotation & QC
 
 ---
 
-## Deploy to Vercel / 部署到Vercel
+## 🇮🇩 Bahasa Indonesia
 
-### Step 1: Fork or Clone Repository / 第一步：Fork或克隆仓库
+### Deskripsi
+**Fast Text Processing for Annotation & QC**
+Alat bantu pemrosesan teks cepat untuk kebutuhan anotasi dan Quality Control (QC) transkripsi audio.
+
+### Pratinjau
+![Preview](./preview.gif)
+*Screenshot/GIF wajib diisi*
+
+### Fitur Utama
+- **Multi-mode processing:** Mendukung berbagai mode (V1, V2, Mode Biasa, Filter Custom).
+- **Built-in fixer logic:** Perbaikan otomatis untuk tanda baca dan ejaan.
+- **Flat text cleaner:** Membersihkan teks dari format, simbol, dan tanda baca.
+- **Real-time duplicate detection:** Deteksi kata berulang secara instan.
+- **Token-based editing:** Edit kata per token dengan mudah.
+- **Dark/light mode:** Dukungan mode gelap dan terang yang nyaman.
+- **QRIS payment support:** Dukungan donasi melalui QRIS.
+
+### Penjelasan Mode
+- **Mode Biasa:** Fleksibel, tanpa perlu prompt manual, proses lebih cepat.
+- **V1:** Pemrosesan anotasi dasar (basic).
+- **V2:** Fitur fixer tingkat lanjut dengan deteksi flag/masalah.
+- **Filter Custom:** Berbasis aturan (rule-based) sepenuhnya, tanpa AI.
+
+### Alur Kerja (Workflow)
+Input → Pemilihan Mode → Proses → Output → Submit
+
+### Kasus Penggunaan (Use Cases)
+- Anotasi Audio
+- Quality Control (QC)
+- Batch Text Editing
+
+### Memulai (Getting Started)
+
+#### Persyaratan
+- Node.js (Versi terbaru direkomendasikan)
+- npm / pnpm / yarn
+
+#### Instalasi & Deploy
 
 ```bash
+# Clone
 git clone https://github.com/progstay17/-Fadhil-Annotation-Dingtag-project.git
 cd -Fadhil-Annotation-Dingtag-project
+
+# Install dependencies
+npm install
+
+# Setup environment
+# Buat file .env dan masukkan API Key Anda (GEMINI_API_KEY, GROQ_API_KEY, dll)
+
+# Run development
+npm run dev
+
+# Build
+npm run build
+
+# Deploy (Vercel)
+npx vercel deploy
 ```
 
-### Step 2: Deploy to Vercel / 第二步：部署到Vercel
+### Dokumentasi API
 
-**English:**
-1. Go to [vercel.com](https://vercel.com) and login
-2. Click **"Add New..."** > **"Project"**
-3. Select the `-Fadhil-Annotation-Dingtag-project` repository from your GitHub list
-4. Click **"Deploy"**
+#### POST `/api/transcribe`
+Deskripsi: Memproses teks berdasarkan mode dan provider yang dipilih.
+**Request Body:**
+```json
+{
+  "text": "string",
+  "provider": "google | groq | aiml | openrouter",
+  "systemPrompt": "string (opsional)"
+}
+```
+**Response:**
+```json
+{
+  "result": "teks hasil pemrosesan",
+  "scoring": { ... }
+}
+```
 
-**中文：**
-1. 访问 [vercel.com](https://vercel.com) 并登录
-2. 点击 **"Add New..."** > **"Project"**
-3. 从GitHub列表中选择 `-Fadhil-Annotation-Dingtag-project` 仓库
-4. 点击 **"Deploy"**
+### Roadmap
+- Peningkatan UI/UX
+- Optimalisasi performa
+- Ekspansi fitur baru
 
-### Step 3: Setup API Keys / 第三步：设置API密钥
+### Kontribusi
+Kontribusi selalu terbuka! Silakan buka Issue atau Pull Request.
 
-After deployment, you need to add the API Keys (Google Gemini and/or Groq):
-
-部署完成后，您需要添加API密钥（Google Gemini 和/或 Groq）：
-
-**Get API Keys / 获取API密钥：**
-1. **Google Gemini:** Go to [aistudio.google.com](https://aistudio.google.com/) (Recommended: Free & Fast)
-2. **AIML API:** Go to [aimlapi.com](https://aimlapi.com/)
-3. **Groq:** Go to [console.groq.com](https://console.groq.com)
-4. Create a new API Key in each respective dashboard and copy it.
-
-   访问 [aistudio.google.com](https://aistudio.google.com/), [aimlapi.com](https://aimlapi.com/) 或 [console.groq.com](https://console.groq.com) 创建并复制新的API密钥 (推荐使用 Gemini)。
-
-**Add to Vercel / 添加到Vercel：**
-
-1. Open your project in Vercel Dashboard / 在Vercel仪表板中打开您的项目
-2. Go to **Settings** > **Environment Variables** / 进入 **Settings** > **Environment Variables**
-3. Add the following variables / 添加以下变量：
-   - **Key:** `GEMINI_API_KEY` | **Value:** (your Gemini key)
-   - **Key:** `GROQ_API_KEY` | **Value:** (your Groq key)
-4. Click **"Save"** for each / 为每个变量点击 **"Save"**
-5. **Redeploy** the project to activate the environment variable / **重新部署**项目以激活环境变量：
-   - Go to the **Deployments** tab / 进入 **Deployments** 标签
-   - Click **"..."** on the latest deployment / 点击最新部署旁的 **"..."**
-   - Select **"Redeploy"** / 选择 **"Redeploy"**
+### Lisensi
+MIT
 
 ---
 
-## Using v0.dev (Alternative) / 使用v0.dev（替代方案）
+## 🇬🇧 English
 
-If you want to edit this project using [v0.dev](https://v0.dev):
+### Description
+**Fast Text Processing for Annotation & QC**
+A fast text processing tool for audio transcription annotation and Quality Control (QC) needs.
 
-如果您想使用 [v0.dev](https://v0.dev) 编辑此项目：
+### Preview
+![Preview](./preview.gif)
+*Screenshot/GIF required*
 
-### Step 1: Import Project / 第一步：导入项目
+### Key Features
+- **Multi-mode processing:** Supports various modes (V1, V2, Normal Mode, Custom Filter).
+- **Built-in fixer logic:** Automatic correction for punctuation and spelling.
+- **Flat text cleaner:** Cleans text from formatting, symbols, and punctuation.
+- **Real-time duplicate detection:** Instant detection of repeated words.
+- **Token-based editing:** Easily edit words per token.
+- **Dark/light mode:** Comfortable dark and light mode support.
+- **QRIS payment support:** Support for donations via QRIS.
 
-1. Go to [v0.dev](https://v0.dev) / 访问 [v0.dev](https://v0.dev)
-2. Click **"Import from GitHub"** / 点击 **"Import from GitHub"**
-3. Select this repository / 选择此仓库
+### Modes Explanation
+- **Normal Mode:** Flexible, no manual prompt needed, faster processing.
+- **V1:** Basic annotation processing.
+- **V2:** Advanced fixer with flag/issue detection.
+- **Custom Filter:** Fully rule-based, no AI.
 
-### Step 2: Connect Groq Integration / 第二步：连接Groq集成
+### Workflow
+Input → Mode Selection → Process → Output → Submit
 
-1. In v0, click the **Settings** button (gear icon in the top right corner)
-   
-   在v0中，点击右上角的 **Settings** 按钮（齿轮图标）
+### Use Cases
+- Audio Annotation
+- Quality Control (QC)
+- Batch Text Editing
 
-2. Go to **"Settings"** section / 进入 **"Settings"** 部分
+### Getting Started
 
-3. Find **"Groq"** and click **"Connect"**
-   
-   找到 **"Groq"** 并点击 **"Connect"**
+#### Requirements
+- Node.js (Latest version recommended)
+- npm / pnpm / yarn
 
-4. Follow the instructions to connect your Groq account
-   
-   按照说明连接您的Groq账户
-
-5. The API Key will be automatically available in the project
-   
-   API密钥将自动在项目中可用
-
-### Step 3: Merge Pull Request / 第三步：合并Pull Request
-
-After making changes in v0 / 在v0中进行更改后：
-
-1. v0 will automatically create a new branch (e.g., `v0/progstay17-xxxxx`)
-   
-   v0将自动创建新分支（例如：`v0/progstay17-xxxxx`）
-
-2. Click **Settings** > **Git** / 点击 **Settings** > **Git**
-
-3. Click **"Create Pull Request"** to create a PR to GitHub
-   
-   点击 **"Create Pull Request"** 在GitHub上创建PR
-
-4. In GitHub, review the changes and click **"Merge Pull Request"**
-   
-   在GitHub中，审查更改并点击 **"Merge Pull Request"**
-
-5. Select **"Confirm Merge"** / 选择 **"Confirm Merge"**
-
----
-
-## Local Development / 本地开发
+#### Installation & Deployment
 
 ```bash
-# Install dependencies / 安装依赖
-pnpm install
+# Clone
+git clone https://github.com/progstay17/-Fadhil-Annotation-Dingtag-project.git
+cd -Fadhil-Annotation-Dingtag-project
 
-# Create .env.local file / 创建.env.local文件
-# Add keys for the providers you want to use
-echo "GEMINI_API_KEY=your_gemini_key_here" > .env.local
-echo "GROQ_API_KEY=your_groq_key_here" >> .env.local
+# Install dependencies
+npm install
 
-# Run development server / 运行开发服务器
-pnpm dev
+# Setup environment
+# Create a .env file and add your API Keys (GEMINI_API_KEY, GROQ_API_KEY, etc.)
+
+# Run development
+npm run dev
+
+# Build
+npm run build
+
+# Deploy (Vercel)
+npx vercel deploy
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+### API Documentation
 
-在浏览器中打开 [http://localhost:3000](http://localhost:3000)。
+#### POST `/api/transcribe`
+Description: Processes text based on the selected mode and provider.
+**Request Body:**
+```json
+{
+  "text": "string",
+  "provider": "google | groq | aiml | openrouter",
+  "systemPrompt": "string (optional)"
+}
+```
+**Response:**
+```json
+{
+  "result": "processed text result",
+  "scoring": { ... }
+}
+```
 
----
+### Roadmap
+- UI/UX improvements
+- Performance optimization
+- Feature expansion
 
-## Environment Variables / 环境变量
+### Contributing
+Contributions are always welcome! Please open an Issue or Pull Request.
 
-| Variable | Description / 描述 | Required / 必需 |
-|----------|-------------------|-----------------|
-| `GEMINI_API_KEY` | API Key from aistudio.google.com / 来自aistudio.google.com | Yes / 是 (Recommended) |
-| `GROQ_API_KEY` | API Key from console.groq.coms / 来自console.groq.coms的API密钥 | No / 否 (Alternative) |
-
----
-
-## Troubleshooting / 故障排除
-
-### Error: "API key is missing" / 错误："API密钥缺失"
-
-1. Make sure `GEMINI_API_KEY` or `GROQ_API_KEY` is added in Environment Variables.
-   
-   确保已在环境变量中添加 `GEMINI_API_KEY` 或 `GROQ_API_KEY`。
-
-2. Make sure you redeploy after adding the environment variable.
-   
-   确保添加环境变量后重新部署.
-
-3. Check if the API Key is valid at [aistudio.google.com](https://aistudio.google.com) or [console.groq.com](https://console.groq.com).
-   
-   在 [aistudio.google.com](https://aistudio.google.com) 或 [console.groq.com](https://console.groq.com) 检查API密钥是否有效.
-
-### Error 500 when transcribing / 转录时出现错误500
-
-1. Check if the API Key is correct / 检查API密钥是否正确
-2. Make sure your Groq account is active and has quota / 确保Groq账户处于活动状态并有配额
-3. Try generating a new API Key if the error persists / 如果错误持续，尝试生成新的API密钥
+### License
+MIT
 
 ---
 
-## License / 许可证
+## 🇨🇳 中文 (Mandarin)
 
+### 描述
+**用于标注和质检的高效文本处理**
+专为音频转录标注和质量控制 (QC) 需求设计的高效文本处理工具。
+
+### 预览
+![Preview](./preview.gif)
+*必须包含截图或 GIF*
+
+### 主要功能
+- **多模式处理：** 支持多种模式（V1、V2、普通模式、自定义过滤器）。
+- **内置修复逻辑：** 自动纠正标点符号和拼写。
+- **平展文本清洗：** 清除文本中的格式、符号和标点。
+- **实时重复检测：** 瞬间检测重复词汇。
+- **基于 Token 的编辑：** 轻松按词编辑。
+- **深色/浅色模式：** 舒适的深浅色界面支持。
+- **QRIS 支付支持：** 支持通过 QRIS 进行捐赠。
+
+### 模式说明
+- **普通模式：** 灵活，无需手动提示词，处理速度更快。
+- **V1：** 基础标注处理。
+- **V2：** 带有标记/问题检测的高级修复功能。
+- **自定义过滤器：** 完全基于规则，无需 AI。
+
+### 工作流 (Workflow)
+输入 → 模式选择 → 处理 → 输出 → 提交
+
+### 应用场景
+- 音频标注
+- 质量控制 (QC)
+- 批量文本编辑
+
+### 入门指南 (Getting Started)
+
+#### 环境要求
+- Node.js (建议使用最新版本)
+- npm / pnpm / yarn
+
+#### 安装与部署 (Installation & Deployment)
+
+```bash
+# Clone
+git clone https://github.com/progstay17/-Fadhil-Annotation-Dingtag-project.git
+cd -Fadhil-Annotation-Dingtag-project
+
+# Install dependencies
+npm install
+
+# Setup environment
+# 创建 .env 文件并添加您的 API 密钥 (GEMINI_API_KEY, GROQ_API_KEY 等)
+
+# Run development
+npm run dev
+
+# Build
+npm run build
+
+# Deploy (Vercel)
+npx vercel deploy
+```
+
+### API 文档 (API Documentation)
+
+#### POST `/api/transcribe`
+描述：根据选择的模式和提供商处理文本。
+**请求体 (Request Body)：**
+```json
+{
+  "text": "string",
+  "provider": "google | groq | aiml | openrouter",
+  "systemPrompt": "string (可选)"
+}
+```
+**响应 (Response)：**
+```json
+{
+  "result": "处理后的文本结果",
+  "scoring": { ... }
+}
+```
+
+### 路线图 (Roadmap)
+- UI/UX 改进
+- 性能优化
+- 功能扩展
+
+### 贡献 (Contributing)
+欢迎贡献！请提交 Issue 或 Pull Request。
+
+### 许可证 (License)
 MIT
