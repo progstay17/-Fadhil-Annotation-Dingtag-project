@@ -14,8 +14,32 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { TranslationKey } from "@/lib/translations"
 
 type Provider = "groq" | "google" | "aiml" | "openrouter"
+
+function HelpIcon({ contentKey }: { contentKey: TranslationKey }) {
+  const { t } = useLanguage()
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="ml-1 text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full border border-slate-300 dark:border-slate-600 w-3.5 h-3.5 flex items-center justify-center cursor-pointer transition-colors">
+          ?
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-4 shadow-xl bg-popover text-popover-foreground border-border">
+        <div className="font-mono text-xs whitespace-pre-wrap leading-relaxed">
+          {t(contentKey)}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 const PROMPT_BIASA = `Perbaiki teks input. Semua output dalam satu paragraf.
 
@@ -629,17 +653,19 @@ export function TranscriptionForm() {
             {t("modeLabel")}
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-            <button
-              onClick={() => setVersion("biasa")}
-              disabled={isProcessing}
+            <div
+              onClick={() => !isProcessing && setVersion("biasa")}
               className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
                 version === "biasa"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
-                {t("biasaTitle")}
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1 w-full">
+                <div className="flex items-center justify-between w-full">
+                  {t("biasaTitle")}
+                  <HelpIcon contentKey="tutorialModeBiasa" />
+                </div>
                 <span className="text-[9px] font-bold text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
                   {t("tagAnnotator")}
                 </span>
@@ -647,18 +673,20 @@ export function TranscriptionForm() {
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("biasaDesc")}
               </span>
-            </button>
-            <button
-              onClick={() => setVersion("v1")}
-              disabled={isProcessing}
+            </div>
+            <div
+              onClick={() => !isProcessing && setVersion("v1")}
               className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
                 version === "v1"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
-                {t("v1Title")}
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1 w-full">
+                <div className="flex items-center justify-between w-full">
+                  {t("v1Title")}
+                  <HelpIcon contentKey="tutorialModeV1" />
+                </div>
                 <span className="text-[9px] font-bold text-muted-foreground/60 bg-secondary px-1.5 py-0.5 rounded border border-border">
                   {t("tagLessRecommended")}
                 </span>
@@ -666,22 +694,24 @@ export function TranscriptionForm() {
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("v1Desc")}
               </span>
-            </button>
-            <button
-              onClick={() => setVersion("v2.2")}
-              disabled={isProcessing}
+            </div>
+            <div
+              onClick={() => !isProcessing && setVersion("v2.2")}
               className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
                 version === "v2.2"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
-                <div className="flex items-center gap-2">
-                  {t("v2Title")}
-                  <span className="px-1.5 py-0.5 rounded-full bg-secondary text-[9px] font-bold uppercase tracking-tighter text-muted-foreground border border-border">
-                    Beta
-                  </span>
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1 w-full">
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    {t("v2Title")}
+                    <span className="px-1.5 py-0.5 rounded-full bg-secondary text-[9px] font-bold uppercase tracking-tighter text-muted-foreground border border-border">
+                      Beta
+                    </span>
+                  </div>
+                  <HelpIcon contentKey="tutorialModeV2" />
                 </div>
                 <span className="text-[9px] font-bold text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
                   {t("tagRecommended")}
@@ -690,10 +720,9 @@ export function TranscriptionForm() {
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("v2Desc")}
               </span>
-            </button>
-            <button
-              onClick={() => setVersion("v3")}
-              disabled={isProcessing}
+            </div>
+            <div
+              onClick={() => !isProcessing && setVersion("v3")}
               className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
                 version === "v3"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
@@ -709,7 +738,7 @@ export function TranscriptionForm() {
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("v3Desc")}
               </span>
-            </button>
+            </div>
           </div>
         </div>
 
@@ -753,13 +782,16 @@ export function TranscriptionForm() {
             </button>
           )}
           {(version === "v1" || version === "v2.2") && (
-            <button
-              onClick={flatten}
-              disabled={isProcessing || !input.trim()}
-              className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer"
-            >
-              {t("flatTextButton")}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={flatten}
+                disabled={isProcessing || !input.trim()}
+                className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer"
+              >
+                {t("flatTextButton")}
+              </button>
+              <HelpIcon contentKey="tutorialFlatText" />
+            </div>
           )}
         </div>
       </div>
@@ -998,9 +1030,13 @@ export function TranscriptionForm() {
               {t("tutorialTitle")}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-2">
             <div className="font-mono text-sm text-foreground whitespace-pre-wrap leading-relaxed">
               {t("tutorialBody")}
+            </div>
+            <div className="w-full h-px bg-border my-4" />
+            <div className="font-mono text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+              {t("tutorialModeV2")}
             </div>
           </div>
           <DialogFooter>
