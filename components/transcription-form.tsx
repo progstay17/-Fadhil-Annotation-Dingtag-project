@@ -5,6 +5,7 @@ import { TranscriptionCard } from "./transcription-card"
 import { FilterCustom } from "./filter-custom"
 import { StatusIndicator, StatusState } from "./status-indicator"
 import { calculateScoring, ScoringResult } from "@/lib/scoring"
+import { protectAcronyms, restoreAcronyms } from "@/lib/text-utils"
 import { Kbd } from "@/components/ui/kbd"
 import { useLanguage } from "./language-provider"
 import {
@@ -14,6 +15,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { TranslationKey } from "@/lib/translations"
+import { HelpIcon } from "./ui/help-icon"
 
 type Provider = "groq" | "google" | "aiml" | "openrouter"
 
@@ -209,19 +217,24 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
     const original = finalWordsArray[i]
     let word = original
 
-    // 1. Enforce Lowercase unless capitalized in input or after sentence ender
-    const afterSentenceEnder = i > 0 && /[.!?]$/.test(finalWordsArray[i-1])
-    const wasCapitalizedInInput = inputCapitalizedIndices.has(i)
+    // Acronym Protection: If it's an acronym, don't change its case
+    const isAcronym = /\b[A-Z]{2,}\b/.test(word.replace(punctuationRegex, ""))
 
-    if (i === 0 || afterSentenceEnder || wasCapitalizedInInput) {
-      // Keep or make capitalized
-      if (/^[a-z]/.test(word)) {
-        word = word[0].toUpperCase() + word.slice(1)
-      }
-    } else {
-      // Make lowercase
-      if (/^[A-Z]/.test(word)) {
-        word = word[0].toLowerCase() + word.slice(1)
+    if (!isAcronym) {
+      // 1. Enforce Lowercase unless capitalized in input or after sentence ender
+      const afterSentenceEnder = i > 0 && /[.!?]$/.test(finalWordsArray[i-1])
+      const wasCapitalizedInInput = inputCapitalizedIndices.has(i)
+
+      if (i === 0 || afterSentenceEnder || wasCapitalizedInInput) {
+        // Keep or make capitalized
+        if (/^[a-z]/.test(word)) {
+          word = word[0].toUpperCase() + word.slice(1)
+        }
+      } else {
+        // Make lowercase
+        if (/^[A-Z]/.test(word)) {
+          word = word[0].toLowerCase() + word.slice(1)
+        }
       }
     }
 
@@ -282,9 +295,10 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
   // FINAL CAPITALIZATION PASS (Rule: First word and words after . ! ? always capitalized)
   for (let i = 0; i < finalWordsArray.length; i++) {
     const word = finalWordsArray[i]
+    const isAcronym = /\b[A-Z]{2,}\b/.test(word.replace(punctuationRegex, ""))
     const shouldCapitalize = i === 0 || (i > 0 && /[.!?]$/.test(finalWordsArray[i - 1]))
 
-    if (shouldCapitalize && /^[a-z]/.test(word)) {
+    if (shouldCapitalize && /^[a-z]/.test(word) && !isAcronym) {
       const capitalized = word[0].toUpperCase() + word.slice(1)
       finalWordsArray[i] = capitalized
       // Track as change if it wasn't already tracked
@@ -629,17 +643,19 @@ export function TranscriptionForm() {
             {t("modeLabel")}
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-            <button
-              onClick={() => setVersion("biasa")}
-              disabled={isProcessing}
+            <div
+              onClick={() => !isProcessing && setVersion("biasa")}
               className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
                 version === "biasa"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
-                {t("biasaTitle")}
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1 w-full">
+                <div className="flex items-center justify-between w-full">
+                  {t("biasaTitle")}
+                  <HelpIcon>{t("tutorialModeBiasa")}</HelpIcon>
+                </div>
                 <span className="text-[9px] font-bold text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
                   {t("tagAnnotator")}
                 </span>
@@ -647,18 +663,20 @@ export function TranscriptionForm() {
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("biasaDesc")}
               </span>
-            </button>
-            <button
-              onClick={() => setVersion("v1")}
-              disabled={isProcessing}
+            </div>
+            <div
+              onClick={() => !isProcessing && setVersion("v1")}
               className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
                 version === "v1"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
-                {t("v1Title")}
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1 w-full">
+                <div className="flex items-center justify-between w-full">
+                  {t("v1Title")}
+                  <HelpIcon>{t("tutorialModeV1")}</HelpIcon>
+                </div>
                 <span className="text-[9px] font-bold text-muted-foreground/60 bg-secondary px-1.5 py-0.5 rounded border border-border">
                   {t("tagLessRecommended")}
                 </span>
@@ -666,22 +684,24 @@ export function TranscriptionForm() {
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("v1Desc")}
               </span>
-            </button>
-            <button
-              onClick={() => setVersion("v2.2")}
-              disabled={isProcessing}
+            </div>
+            <div
+              onClick={() => !isProcessing && setVersion("v2.2")}
               className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
                 version === "v2.2"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
                   : "bg-card border-border hover:bg-secondary/50"
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
-                <div className="flex items-center gap-2">
-                  {t("v2Title")}
-                  <span className="px-1.5 py-0.5 rounded-full bg-secondary text-[9px] font-bold uppercase tracking-tighter text-muted-foreground border border-border">
-                    Beta
-                  </span>
+              <span className="font-mono text-sm font-bold flex flex-col items-start gap-1 w-full">
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    {t("v2Title")}
+                    <span className="px-1.5 py-0.5 rounded-full bg-secondary text-[9px] font-bold uppercase tracking-tighter text-muted-foreground border border-border">
+                      Beta
+                    </span>
+                  </div>
+                  <HelpIcon>{t("tutorialModeV2")}</HelpIcon>
                 </div>
                 <span className="text-[9px] font-bold text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
                   {t("tagRecommended")}
@@ -690,10 +710,9 @@ export function TranscriptionForm() {
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("v2Desc")}
               </span>
-            </button>
-            <button
-              onClick={() => setVersion("v3")}
-              disabled={isProcessing}
+            </div>
+            <div
+              onClick={() => !isProcessing && setVersion("v3")}
               className={`flex flex-col items-start p-3 rounded-md border transition-all text-left cursor-pointer ${
                 version === "v3"
                   ? "bg-primary/5 border-primary ring-1 ring-primary"
@@ -709,7 +728,7 @@ export function TranscriptionForm() {
               <span className="font-mono text-[10px] text-muted-foreground mt-1">
                 {t("v3Desc")}
               </span>
-            </button>
+            </div>
           </div>
         </div>
 
@@ -730,7 +749,7 @@ export function TranscriptionForm() {
               disabled={isProcessing}
               className="font-mono text-xs bg-secondary text-foreground border border-border rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <option value="google">{t("modelGoogle")}</option>
+              <option value="google">Google Gemini</option>
               <option value="aiml">{t("modelAiml")}</option>
               <option value="openrouter">{t("modelOpenRouter")}</option>
               <option value="groq">{t("modelGroq")}</option>
@@ -753,13 +772,16 @@ export function TranscriptionForm() {
             </button>
           )}
           {(version === "v1" || version === "v2.2") && (
-            <button
-              onClick={flatten}
-              disabled={isProcessing || !input.trim()}
-              className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer"
-            >
-              {t("flatTextButton")}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={flatten}
+                disabled={isProcessing || !input.trim()}
+                className="font-mono text-xs font-medium bg-white text-black border border-black px-4 py-2.5 rounded-md hover:bg-gray-100 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 cursor-pointer"
+              >
+                {t("flatTextButton")}
+              </button>
+              <HelpIcon>{t("tutorialFlatText")}</HelpIcon>
+            </div>
           )}
         </div>
       </div>
@@ -998,9 +1020,13 @@ export function TranscriptionForm() {
               {t("tutorialTitle")}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-2">
             <div className="font-mono text-sm text-foreground whitespace-pre-wrap leading-relaxed">
               {t("tutorialBody")}
+            </div>
+            <div className="w-full h-px bg-border my-4" />
+            <div className="font-mono text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+              {t("tutorialModeV2")}
             </div>
           </div>
           <DialogFooter>

@@ -18,8 +18,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'DingTag Annotation tool - Tanda Baca & EYD Otomatis',
-  description: 'Alat transkripsi dengan penambahan tanda baca dan koreksi EYD otomatis menggunakan AI',
+  title: 'DingTag Annotation tool - Fast Text Processing for Annotation & QC',
+  description: 'Specialized workflow system for annotators. Optimized for high-speed transcription and quality control.',
   generator: 'v0.app',
   icons: {
     icon: [
