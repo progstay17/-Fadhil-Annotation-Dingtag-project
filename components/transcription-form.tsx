@@ -749,7 +749,7 @@ export function TranscriptionForm() {
               disabled={isProcessing}
               className="font-mono text-xs bg-secondary text-foreground border border-border rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <option value="google">{t("modelGoogle")}</option>
+              <option value="google">Google Gemini</option>
               <option value="aiml">{t("modelAiml")}</option>
               <option value="openrouter">{t("modelOpenRouter")}</option>
               <option value="groq">{t("modelGroq")}</option>

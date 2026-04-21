@@ -1,63 +1,52 @@
-# DingTag Annotation Tool
+# DingTag Annotation tool
 
-Fast Text Processing for Annotation & QC
+**Fast Text Processing for Annotation & QC**
 
 ---
 
 ## 🇮🇩 Bahasa Indonesia
 
-### Deskripsi
-**Fast Text Processing for Annotation & QC**
-Alat bantu pemrosesan teks cepat untuk kebutuhan anotasi dan Quality Control (QC) transkripsi audio.
-
-### Pratinjau
+### Preview
 ![Preview](./preview.gif)
 *Screenshot/GIF wajib diisi*
 
-### Fitur Utama
-- **Multi-mode processing:** Mendukung berbagai mode (V1, V2, Mode Biasa, Filter Custom).
-- **Built-in fixer logic:** Perbaikan otomatis untuk tanda baca dan ejaan.
-- **Flat text cleaner:** Membersihkan teks dari format, simbol, dan tanda baca.
-- **Real-time duplicate detection:** Deteksi kata berulang secara instan.
-- **Token-based editing:** Edit kata per token dengan mudah.
-- **Dark/light mode:** Dukungan mode gelap dan terang yang nyaman.
-- **QRIS payment support:** Dukungan donasi melalui QRIS.
+### Fitur
+- Pemrosesan multi-mode (V1, V2.2, Mode Biasa, Filter Custom)
+- Logika perbaikan (fixer) bawaan
+- Pembersih teks (Flat Text)
+- Deteksi kata berulang real-time
+- Pengeditan berbasis token
+- Mode gelap/terang
+- Dukungan pembayaran QRIS
 
 ### Penjelasan Mode
-- **Mode Biasa:** Fleksibel, tanpa perlu prompt manual, proses lebih cepat.
-- **V1:** Pemrosesan anotasi dasar (basic).
-- **V2:** Fitur fixer tingkat lanjut dengan deteksi flag/masalah.
-- **Filter Custom:** Berbasis aturan (rule-based) sepenuhnya, tanpa AI.
+- **Mode Biasa** → Fleksibel, bekerja seperti AI standar tanpa perlu prompt manual.
+- **V1** → Pemrosesan anotasi dasar menggunakan metode backslash.
+- **V2.2** → Fixer canggih dengan validasi otomatis dan deteksi kesalahan.
+- **Filter Custom** → Berbasis aturan (rule-based), tanpa AI, untuk kontrol penuh.
 
-### Alur Kerja (Workflow)
+### Alur Kerja
 Input → Pemilihan Mode → Proses → Output → Submit
 
-### Kasus Penggunaan (Use Cases)
+### Kasus Penggunaan
 - Anotasi Audio
 - Quality Control (QC)
-- Batch Text Editing
+- Pengeditan teks massal (Batch editing)
 
-### Memulai (Getting Started)
-
-#### Persyaratan
-- Node.js (Versi terbaru direkomendasikan)
-- npm / pnpm / yarn
-
-#### Instalasi & Deploy
-
+### Memulai
 ```bash
 # Clone
-git clone https://github.com/progstay17/-Fadhil-Annotation-Dingtag-project.git
-cd -Fadhil-Annotation-Dingtag-project
+git clone https://github.com/USERNAME/REPO_NAME.git
+cd REPO_NAME
 
 # Install dependencies
 npm install
 
 # Setup environment
 cp .env.example .env
-# Edit .env dengan API Key Anda (GEMINI_API_KEY, GROQ_API_KEY, dll)
+# Edit .env dengan nilai Anda
 
-# Run development
+# Jalankan development
 npm run dev
 
 # Build
@@ -67,96 +56,60 @@ npm run build
 npx vercel deploy
 ```
 
-### Dokumentasi API
-
-#### POST `/api/transcribe`
-Deskripsi: Memproses teks berdasarkan mode dan provider yang dipilih.
-**Request Body:**
-```json
-{
-  "text": "string",
-  "provider": "google | groq | aiml | openrouter",
-  "systemPrompt": "string (opsional)"
-}
-```
-**Response:**
-```json
-{
-  "result": "teks hasil pemrosesan",
-  "scoring": {
-    "score": 100,
-    "highlights": [
-      { "text": "kata", "type": "correct | added | missing | changed | normal" }
-    ]
-  }
-}
-```
-
 ### Roadmap
-- Peningkatan UI/UX
-- Optimalisasi performa
-- Ekspansi fitur baru
+- Perbaikan UI
+- Optimasi performa
+- Ekspansi fitur
 
 ### Kontribusi
-Kontribusi selalu terbuka! Silakan buka Issue atau Pull Request.
+Panduan kontribusi sederhana: Fork repo, buat perubahan, dan kirim PR.
 
 ### Lisensi
-MIT
+Lisensi MIT.
 
 ---
 
 ## 🇬🇧 English
 
-### Description
-**Fast Text Processing for Annotation & QC**
-A fast text processing tool for audio transcription annotation and Quality Control (QC) needs.
-
 ### Preview
 ![Preview](./preview.gif)
 *Screenshot/GIF required*
 
-### Key Features
-- **Multi-mode processing:** Supports various modes (V1, V2, Normal Mode, Custom Filter).
-- **Built-in fixer logic:** Automatic correction for punctuation and spelling.
-- **Flat text cleaner:** Cleans text from formatting, symbols, and punctuation.
-- **Real-time duplicate detection:** Instant detection of repeated words.
-- **Token-based editing:** Easily edit words per token.
-- **Dark/light mode:** Comfortable dark and light mode support.
-- **QRIS payment support:** Support for donations via QRIS.
+### Features
+- Multi-mode processing (V1, V2.2, Normal Mode, Custom Filter)
+- Built-in fixer logic
+- Flat text cleaner
+- Real-time duplicate detection
+- Token-based editing
+- Dark/light mode
+- QRIS payment support
 
 ### Modes Explanation
-- **Normal Mode:** Flexible, no manual prompt needed, faster processing.
-- **V1:** Basic annotation processing.
-- **V2:** Advanced fixer with flag/issue detection.
-- **Custom Filter:** Fully rule-based, no AI.
+- **Normal Mode** → Flexible, works like standard AI without needing manual prompts.
+- **V1** → Basic annotation processing using the backslash method.
+- **V2.2** → Advanced fixer with automatic validation and error detection.
+- **Custom Filter** → Rule-based, no AI, for full control.
 
 ### Workflow
 Input → Mode Selection → Process → Output → Submit
 
 ### Use Cases
-- Audio Annotation
+- Audio annotation
 - Quality Control (QC)
-- Batch Text Editing
+- Batch text editing
 
 ### Getting Started
-
-#### Requirements
-- Node.js (Latest version recommended)
-- npm / pnpm / yarn
-
-#### Installation & Deployment
-
 ```bash
 # Clone
-git clone https://github.com/progstay17/-Fadhil-Annotation-Dingtag-project.git
-cd -Fadhil-Annotation-Dingtag-project
+git clone https://github.com/USERNAME/REPO_NAME.git
+cd REPO_NAME
 
 # Install dependencies
 npm install
 
 # Setup environment
 cp .env.example .env
-# Edit .env with your API Keys (GEMINI_API_KEY, GROQ_API_KEY, etc.)
+# Edit .env with your values
 
 # Run development
 npm run dev
@@ -168,139 +121,101 @@ npm run build
 npx vercel deploy
 ```
 
-### API Documentation
-
-#### POST `/api/transcribe`
-Description: Processes text based on the selected mode and provider.
-**Request Body:**
-```json
-{
-  "text": "string",
-  "provider": "google | groq | aiml | openrouter",
-  "systemPrompt": "string (optional)"
-}
-```
-**Response:**
-```json
-{
-  "result": "processed text result",
-  "scoring": {
-    "score": 100,
-    "highlights": [
-      { "text": "word", "type": "correct | added | missing | changed | normal" }
-    ]
-  }
-}
-```
-
 ### Roadmap
-- UI/UX improvements
+- UI improvement
 - Performance optimization
 - Feature expansion
 
 ### Contributing
-Contributions are always welcome! Please open an Issue or Pull Request.
+Simple contribution guide: Fork the repo, make changes, and submit a PR.
 
 ### License
-MIT
+MIT License.
 
 ---
 
 ## 🇨🇳 中文 (Mandarin)
 
-### 描述
-**用于标注和质检的高效文本处理**
-专为音频转录标注和质量控制 (QC) 需求设计的高效文本处理工具。
-
 ### 预览
 ![Preview](./preview.gif)
 *必须包含截图或 GIF*
 
-### 主要功能
-- **多模式处理：** 支持多种模式（V1、V2、普通模式、自定义过滤器）。
-- **内置修复逻辑：** 自动纠正标点符号和拼写。
-- **平展文本清洗：** 清除文本中的格式、符号和标点。
-- **实时重复检测：** 瞬间检测重复词汇。
-- **基于 Token 的编辑：** 轻松按词编辑。
-- **深色/浅色模式：** 舒适的深浅色界面支持。
-- **QRIS 支付支持：** 支持通过 QRIS 进行捐赠。
+### 特性
+- 多模式处理 (V1, V2.2, 普通模式, 自定义过滤器)
+- 内置修复逻辑
+- 平展文本清洗器
+- 实时重复词检测
+- 基于标记 (Token) 的编辑
+- 深色/浅色模式
+- 支持 QRIS 支付
 
 ### 模式说明
-- **普通模式：** 灵活，无需手动提示词，处理速度更快。
-- **V1：** 基础标注处理。
-- **V2：** 带有标记/问题检测的高级修复功能。
-- **自定义过滤器：** 完全基于规则，无需 AI。
+- **普通模式** → 灵活，像标准 AI 一样工作，无需手动提示词。
+- **V1** → 使用反斜杠方法的基础标注处理。
+- **V2.2** → 具有自动验证和错误检测功能的高级修复程序。
+- **自定义过滤器** → 基于规则，无 AI，实现完全控制。
 
-### 工作流 (Workflow)
+### 工作流
 输入 → 模式选择 → 处理 → 输出 → 提交
 
-### 应用场景
+### 使用场景
 - 音频标注
 - 质量控制 (QC)
 - 批量文本编辑
 
-### 入门指南 (Getting Started)
-
-#### 环境要求
-- Node.js (建议使用最新版本)
-- npm / pnpm / yarn
-
-#### 安装与部署 (Installation & Deployment)
-
+### 开始使用
 ```bash
-# Clone
-git clone https://github.com/progstay17/-Fadhil-Annotation-Dingtag-project.git
-cd -Fadhil-Annotation-Dingtag-project
+# 克隆
+git clone https://github.com/USERNAME/REPO_NAME.git
+cd REPO_NAME
 
-# Install dependencies
+# 安装依赖
 npm install
 
-# Setup environment
+# 设置环境
 cp .env.example .env
-# 编辑 .env 文件并添加您的 API 密钥 (GEMINI_API_KEY, GROQ_API_KEY 等)
+# 使用您的值编辑 .env
 
-# Run development
+# 运行开发环境
 npm run dev
 
-# Build
+# 构建
 npm run build
 
-# Deploy (Vercel)
+# 部署 (Vercel)
 npx vercel deploy
 ```
 
-### API 文档 (API Documentation)
+### 路线图
+- UI 改进
+- 性能优化
+- 功能扩展
 
-#### POST `/api/transcribe`
-描述：根据选择的模式和提供商处理文本。
-**请求体 (Request Body)：**
+### 贡献
+简单的贡献指南：Fork 仓库，进行更改，并提交 PR。
+
+### 许可证
+MIT 许可证。
+
+---
+
+## API
+
+### POST `/api/transcribe`
+Description: Processes text using various AI models and system prompts.
+
+**Request body:**
 ```json
 {
   "text": "string",
   "provider": "google | groq | aiml | openrouter",
-  "systemPrompt": "string (可选)"
+  "systemPrompt": "string"
 }
 ```
-**响应 (Response)：**
+
+**Response:**
 ```json
 {
-  "result": "处理后的文本结果",
-  "scoring": {
-    "score": 100,
-    "highlights": [
-      { "text": "词汇", "type": "correct | added | missing | changed | normal" }
-    ]
-  }
+  "result": "processed text result"
 }
 ```
-
-### 路线图 (Roadmap)
-- UI/UX 改进
-- 性能优化
-- 功能扩展
-
-### 贡献 (Contributing)
-欢迎贡献！请提交 Issue 或 Pull Request。
-
-### 许可证 (License)
-MIT

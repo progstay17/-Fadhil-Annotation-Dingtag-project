@@ -4,7 +4,7 @@ export const translations = {
   id: {
     // Header
     appName: "DingTag Annotation tool",
-    tagline: "Pemrosesan Teks Cepat untuk Anotasi & QC",
+    tagline: "Fast Text Processing for Annotation & QC",
     
     // Form
     inputLabel: "input",
