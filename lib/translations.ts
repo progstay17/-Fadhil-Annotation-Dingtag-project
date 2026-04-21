@@ -47,7 +47,7 @@ export const translations = {
     // Model selector
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
-    modelGoogle: "Google Gemini (Gratis & Cepat)",
+    modelGoogle: "Google Gemini",
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 
@@ -153,7 +153,7 @@ export const translations = {
     // Model selector
     modelLabel: "model",
     modelGroq: "Groq (Llama 3.3)",
-    modelGoogle: "Google Gemini (Free & Fast)",
+    modelGoogle: "Google Gemini",
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 
@@ -259,7 +259,7 @@ export const translations = {
     // Model selector
     modelLabel: "模型",
     modelGroq: "Groq (Llama 3.3)",
-    modelGoogle: "Google Gemini (免费且快速)",
+    modelGoogle: "Google Gemini",
     modelAiml: "Gemma 3 (AIML API)",
     modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 

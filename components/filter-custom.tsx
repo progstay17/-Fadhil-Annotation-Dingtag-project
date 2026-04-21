@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useLanguage } from "./language-provider"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Drawer } from "vaul"
 import { HelpIcon } from "./ui/help-icon"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
@@ -41,18 +42,31 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
 
   // Interaction States
   const [activeToken, setActiveToken] = useState<{ word: string, index: number } | null>(null)
+  const [hoverToken, setHoverToken] = useState<{ word: string, index: number } | null>(null)
   const [batchSelected, setBatchSelected] = useState<number[]>([])
+  const [batchEditEnabled, setBatchEditEnabled] = useState(false)
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [hoverPopoverOpen, setHoverPopoverOpen] = useState(false)
   const [replaceTokenInput, setReplaceTokenInput] = useState("")
   const [aiSuggestions, setAiSuggestions] = useState<{ text: string, reason: string }[]>([])
   const [isAiLoading, setIsAiLoading] = useState(false)
 
+  const [ctrlDragStart, setCtrlDragStart] = useState<number | null>(null)
+  const [showMobileSheet, setShowMobileSheet] = useState(false)
+  const [isTouchDevice, setIsTouchDevice] = useState(false)
+  const pressTimer = useRef<NodeJS.Timeout | null>(null)
+
   // Refs for scroll sync
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
+  const popoverAnchorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setMounted(true)
+    setIsTouchDevice(
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0
+    )
   }, [])
 
   const handleScroll = () => {
@@ -65,27 +79,25 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
   // LAYER 1: DETECTION (REAL-TIME HIGHLIGHT)
   const renderOverlay = () => {
     const { tokens, indices } = getRepeatedWordsIndices(input)
-    const isDark = mounted && resolvedTheme === "dark"
 
     return tokens.map((token, i) => {
       const isRepeated = indices.includes(i)
       const isBatchSelected = batchSelected.includes(i)
 
-      if (isRepeated || isBatchSelected) {
-        return (
-          <mark
-            key={i}
-            className={cn(
-              "rounded-sm text-transparent",
-              isRepeated && !isBatchSelected && "bg-yellow-200 dark:bg-transparent dark:invert",
-              isBatchSelected && "bg-blue-200 dark:bg-blue-500/30"
-            )}
-          >
-            {token}
-          </mark>
-        )
-      }
-      return <span key={i}>{token}</span>
+      return (
+        <span
+          key={i}
+          data-index={i}
+          className={cn(
+            "token-span rounded-sm transition-colors",
+            isRepeated && !isBatchSelected && "bg-yellow-200 dark:bg-transparent dark:invert",
+            isBatchSelected && "bg-blue-200 dark:bg-blue-500/30",
+            !isRepeated && !isBatchSelected && "text-transparent"
+          )}
+        >
+          {token}
+        </span>
+      )
     })
   }
 
@@ -159,85 +171,278 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
     setInput(processedText)
   }, [processedText, setInput])
 
-  const handleTokenClick = (word: string, index: number, e: React.MouseEvent) => {
-    if (e.altKey) {
-      // ALT + Click: Select all identical tokens
+  const handleCopy = () => {
+    navigator.clipboard.writeText(input)
+  }
+
+  const handlePaste = async () => {
+    const text = await navigator.clipboard.readText()
+    setInput(text)
+  }
+
+  const getTokenInfoAtPos = (pos: number) => {
+    const tokens = input.split(/(\s+)/)
+    let currentPos = 0
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i]
+      if (pos >= currentPos && pos <= currentPos + token.length) {
+        // If it's whitespace, we might want the word before or after
+        if (/\s+/.test(token)) return null
+        return { word: token, index: i, start: currentPos, end: currentPos + token.length }
+      }
+      currentPos += token.length
+    }
+    return null
+  }
+
+  const handleEditorClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLTextAreaElement
+    const pos = target.selectionStart
+    const tokenInfo = getTokenInfoAtPos(pos)
+
+    if (tokenInfo && (e.altKey || batchEditEnabled)) {
+      e.preventDefault()
       const tokens = input.split(/(\s+)/)
       const matches: number[] = []
       tokens.forEach((t, i) => {
-        if (t === word) matches.push(i)
+        if (t === tokenInfo.word) matches.push(i)
       })
       setBatchSelected(matches)
-      setActiveToken({ word, index })
-      setReplaceTokenInput(word)
-      setPopoverOpen(true)
-      fetchAiSuggestions(word, input)
-    } else {
-      // Normal click: Only show suggestion if anomaly detected
-      // Detect anomaly: repeated, typo-like, numbers, or missing caps
-      const isRepeated = getRepeatedWordsIndices(input).indices.includes(index)
-      const isNumber = /^\d+$/.test(word)
-      const isAllLowerAcronym = /^[a-z]{2,}$/.test(word) && word.length >= 2 // Simple heuristic
+      setActiveToken({ word: tokenInfo.word, index: tokenInfo.index })
+      setReplaceTokenInput(tokenInfo.word)
 
-      if (isRepeated || isNumber || isAllLowerAcronym) {
-        setActiveToken({ word, index })
-        setBatchSelected([index])
-        setReplaceTokenInput(word)
+      if (popoverAnchorRef.current) {
+        const span = overlayRef.current?.querySelector(`[data-index="${tokenInfo.index}"]`)
+        if (span) {
+          const rect = span.getBoundingClientRect()
+          popoverAnchorRef.current.style.left = `${rect.left}px`
+          popoverAnchorRef.current.style.top = `${rect.top}px`
+          popoverAnchorRef.current.style.width = `${rect.width}px`
+          popoverAnchorRef.current.style.height = `${rect.height}px`
+        }
+      }
+      setPopoverOpen(true)
+    }
+  }
+
+  const handleEditorMouseDown = (e: React.MouseEvent) => {
+    if (e.ctrlKey) {
+      const target = e.target as HTMLTextAreaElement
+      const tokenInfo = getTokenInfoAtPos(target.selectionStart)
+      if (tokenInfo) {
+        setCtrlDragStart(tokenInfo.index)
+      }
+    }
+  }
+
+  const handleEditorMouseUp = (e: React.MouseEvent) => {
+    if (e.ctrlKey && ctrlDragStart !== null) {
+      const target = e.target as HTMLTextAreaElement
+      const tokenInfo = getTokenInfoAtPos(target.selectionStart)
+      if (tokenInfo) {
+        const start = Math.min(ctrlDragStart, tokenInfo.index)
+        const end = Math.max(ctrlDragStart, tokenInfo.index)
+        const tokens = input.split(/(\s+)/)
+        const matches: number[] = []
+        for (let i = start; i <= end; i++) {
+          if (i % 2 === 0) matches.push(i)
+        }
+        setBatchSelected(matches)
+        setActiveToken({ word: tokens[matches[0]], index: matches[0] })
+        setReplaceTokenInput(tokens[matches[0]])
+
+        if (popoverAnchorRef.current) {
+          const span = overlayRef.current?.querySelector(`[data-index="${matches[0]}"]`)
+          if (span) {
+            const rect = span.getBoundingClientRect()
+            popoverAnchorRef.current.style.left = `${rect.left}px`
+            popoverAnchorRef.current.style.top = `${rect.top}px`
+            popoverAnchorRef.current.style.width = `${rect.width}px`
+            popoverAnchorRef.current.style.height = `${rect.height}px`
+          }
+        }
         setPopoverOpen(true)
-        fetchAiSuggestions(word, input)
+      }
+      setCtrlDragStart(null)
+    }
+  }
+
+  const handleEditorTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length >= 2) return
+
+    const target = e.target as HTMLTextAreaElement
+    const pos = target.selectionStart
+    const tokenInfo = getTokenInfoAtPos(pos)
+
+    if (tokenInfo) {
+      pressTimer.current = setTimeout(() => {
+        if ('vibrate' in navigator) navigator.vibrate(30)
+        const tokens = input.split(/(\s+)/)
+        const matches: number[] = []
+        tokens.forEach((t, i) => {
+          if (t === tokenInfo.word) matches.push(i)
+        })
+        setBatchSelected(matches)
+        setActiveToken({ word: tokenInfo.word, index: tokenInfo.index })
+        setReplaceTokenInput(tokenInfo.word)
+        setPopoverOpen(true)
+      }, 500)
+    }
+  }
+
+  const handleEditorTouchEnd = (e: React.TouchEvent) => {
+    if (pressTimer.current) clearTimeout(pressTimer.current)
+
+    // Tap token (anomali) -> bottom sheet
+    if (isTouchDevice && !batchEditEnabled) {
+      const target = e.target as HTMLTextAreaElement
+      const tokenInfo = getTokenInfoAtPos(target.selectionStart)
+      if (tokenInfo) {
+        const isRepeated = getRepeatedWordsIndices(input).indices.includes(tokenInfo.index)
+        const isNumber = /^\d+$/.test(tokenInfo.word)
+        const likelyTypo = /(.)\1{2,}/.test(tokenInfo.word) || (tokenInfo.word.length <= 4 && !/^\d+$/.test(tokenInfo.word) && /^[a-zA-Z]+$/.test(tokenInfo.word))
+
+        if (isRepeated || isNumber || likelyTypo) {
+          setHoverToken({ word: tokenInfo.word, index: tokenInfo.index })
+          setShowMobileSheet(true)
+          fetchAiSuggestions(tokenInfo.word, input)
+        }
+      }
+    }
+  }
+
+  const handleEditorMouseMove = (e: React.MouseEvent) => {
+    if (isTouchDevice || !overlayRef.current || popoverOpen) return
+
+    const x = e.clientX
+    const y = e.clientY
+
+    const spans = overlayRef.current.querySelectorAll('.token-span')
+    let found = null
+    for (const span of Array.from(spans)) {
+      const rect = span.getBoundingClientRect()
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        const index = parseInt(span.getAttribute('data-index') || '-1')
+        const word = span.textContent || ''
+        if (word.trim().length === 0) continue
+        found = { word, index, rect }
+        break
+      }
+    }
+
+    if (found) {
+      const isRepeated = getRepeatedWordsIndices(input).indices.includes(found.index)
+      const isNumber = /^\d+$/.test(found.word)
+      const likelyTypo = /(.)\1{2,}/.test(found.word) || (found.word.length <= 4 && !/^\d+$/.test(found.word) && /^[a-zA-Z]+$/.test(found.word))
+
+      if (isRepeated || isNumber || likelyTypo) {
+        setHoverToken({ word: found.word, index: found.index })
+        if (popoverAnchorRef.current) {
+          popoverAnchorRef.current.style.left = `${found.rect.left}px`
+          popoverAnchorRef.current.style.top = `${found.rect.top}px`
+          popoverAnchorRef.current.style.width = `${found.rect.width}px`
+          popoverAnchorRef.current.style.height = `${found.rect.height}px`
+        }
+        setHoverPopoverOpen(true)
+        fetchAiSuggestions(found.word, input)
       }
     }
   }
 
   const fetchAiSuggestions = async (token: string, context: string) => {
-    // Only fetch for typos or informal spelling
-    if (/^[a-zA-Z]+$/.test(token)) {
-      setIsAiLoading(true)
-      try {
-        const response = await fetch("/api/transcribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: token,
-            provider: "google",
-            systemPrompt: `You are a minimal text correction assistant for Indonesian language.
-Context (read-only): "${context}"
-Target token: "${token}"
+    // Typo detection heuristic (Bug 6)
+    const likelyTypo = (t: string) => {
+      if (/(.)\1{2,}/.test(t)) return true
+      if (t.length <= 4 && !/^\d+$/.test(t)) return true
+      return false
+    }
 
-Return ONLY a JSON array of max 3 correction suggestions.
-Each suggestion: { "text": "corrected", "reason": "short reason" }
-Do not change writing style. Fix typos and informal spelling only.
-Return only JSON, no other text.`
-          }),
-        })
-        const data = await response.json()
-        if (data.result) {
-          try {
-            const parsed = JSON.parse(data.result)
-            setAiSuggestions(Array.isArray(parsed) ? parsed.slice(0, 3) : [])
-          } catch {
-            setAiSuggestions([])
-          }
-        }
-      } catch {
-        setAiSuggestions([])
-      } finally {
-        setIsAiLoading(false)
-      }
-    } else {
+    if (!likelyTypo(token)) {
       setAiSuggestions([])
+      return
+    }
+
+    setIsAiLoading(true)
+    try {
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: token,
+          provider: "google",
+          systemPrompt: `Kamu adalah asisten koreksi teks Bahasa Indonesia yang minimal.
+Konteks (read-only): "${context}"
+Token target: "${token}"
+
+Kembalikan HANYA JSON array, maksimal 3 item:
+[{ "text": "koreksi", "reason": "alasan singkat" }]
+
+Rules:
+- Hanya koreksi typo dan ejaan informal
+- JANGAN ubah gaya bahasa
+- JANGAN ubah konteks
+- Kembalikan JSON saja, tanpa teks lain`
+        }),
+      })
+      const data = await response.json()
+      if (data.result) {
+        try {
+          const parsed = JSON.parse(data.result)
+          setAiSuggestions(Array.isArray(parsed) ? parsed.slice(0, 3) : [])
+        } catch {
+          setAiSuggestions([])
+        }
+      }
+    } catch {
+      // AI gagal -> hidden silently (Bug 6)
+      setAiSuggestions([])
+    } finally {
+      setIsAiLoading(false)
     }
   }
 
-  const applyReplacement = (newWord: string) => {
+  const applyReplacement = (newWord: string, targetIndices?: number[]) => {
     const tokens = input.split(/(\s+)/)
-    batchSelected.forEach(idx => {
+    const indicesToUpdate = targetIndices || batchSelected
+    indicesToUpdate.forEach(idx => {
       tokens[idx] = newWord
     })
     setInput(tokens.join(""))
     setPopoverOpen(false)
+    setHoverPopoverOpen(false)
     setBatchSelected([])
     setActiveToken(null)
+  }
+
+  const getAlgoSuggestions = (token: string) => {
+    const suggestions: { category: string, text: string, reason: string }[] = []
+
+    // Kategori 1: Format Teks
+    if (/^[a-zA-Z]+$/.test(token)) {
+      suggestions.push({ category: "Format", text: token[0].toUpperCase() + token.slice(1).toLowerCase(), reason: "Capitalize" })
+      suggestions.push({ category: "Format", text: token.toUpperCase(), reason: "UPPERCASE" })
+      suggestions.push({ category: "Format", text: token.toLowerCase(), reason: "lowercase" })
+    }
+
+    // Kategori 2 & 3: Tanda Baca
+    const wordPart = token.replace(/[.,!?]$/, "")
+    const hasPunct = /[.,!?]$/.test(token)
+
+    if (hasPunct) {
+      suggestions.push({ category: "Tanda Baca", text: wordPart, reason: "hapus tanda baca" })
+    } else {
+      suggestions.push({ category: "Tanda Baca", text: token + ",", reason: "tambah koma" })
+      suggestions.push({ category: "Tanda Baca", text: token + ".", reason: "tambah titik" })
+      suggestions.push({ category: "Tanda Baca", text: token + "!", reason: "tambah seru" })
+      suggestions.push({ category: "Tanda Baca", text: token + "?", reason: "tambah tanya" })
+    }
+
+    // Kategori 5: Angka -> Terbilang
+    if (/^\d+$/.test(token)) {
+      suggestions.push({ category: "Angka", text: numberToIndonesianWords(token), reason: "Konversi ke kata" })
+    }
+
+    return suggestions
   }
 
   return (
@@ -258,10 +463,22 @@ Return only JSON, no other text.`
         </div>
         <div className="flex items-center gap-2">
            <button
+            onClick={handleCopy}
+            className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer"
+          >
+            Salin
+          </button>
+          <button
+            onClick={handlePaste}
+            className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer"
+          >
+            Tempel
+          </button>
+          <button
             onClick={onClear}
             className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer"
           >
-            {t("clearButton")}
+            Bersihkan
           </button>
         </div>
       </div>
@@ -274,37 +491,36 @@ Return only JSON, no other text.`
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onScroll={handleScroll}
+            onClick={handleEditorClick}
+            onMouseDown={handleEditorMouseDown}
+            onMouseUp={handleEditorMouseUp}
+            onMouseMove={handleEditorMouseMove}
+            onMouseLeave={() => !popoverOpen && setHoverPopoverOpen(false)}
+            onTouchStart={handleEditorTouchStart}
+            onTouchEnd={handleEditorTouchEnd}
             placeholder={t("inputPlaceholder")}
-            className="w-full h-full min-h-[300px] p-6 bg-transparent border-none outline-none font-mono text-sm leading-relaxed text-foreground resize-none placeholder:text-muted-foreground relative z-10 scrollbar-thin"
+            className="w-full h-full min-h-[300px] p-6 bg-transparent border-none outline-none font-mono text-sm leading-relaxed text-foreground resize-none placeholder:text-muted-foreground relative z-30 scrollbar-thin"
           />
 
           {/* Interaction/Highlight Layer */}
           <div
             ref={overlayRef}
-            className="absolute inset-0 p-6 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words overflow-hidden text-transparent z-20 pointer-events-none"
+            className="absolute inset-0 p-6 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words overflow-hidden text-transparent z-10 pointer-events-none"
+            style={{
+              font: "inherit",
+              padding: "inherit",
+              lineHeight: "inherit",
+            }}
             aria-hidden="true"
           >
             {renderOverlay()}
           </div>
-
-          {/* Token Click Layer (Invisible but captures clicks) */}
-          <div className="absolute inset-0 p-6 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words overflow-hidden z-30 pointer-events-none select-none">
-             {input.split(/(\s+)/).map((part, i) => {
-               if (/\s+/.test(part)) return <span key={i} className="whitespace-pre">{part}</span>
-               return (
-                 <span
-                   key={i}
-                   onClick={(e) => handleTokenClick(part, i, e)}
-                   className="cursor-pointer pointer-events-auto hover:bg-primary/10 rounded-sm px-0.5 transition-colors"
-                 >
-                   {part}
-                 </span>
-               )
-             })}
-          </div>
         </div>
 
-        {/* Suggestion Popover */}
+        {/* Hidden Anchor for Popovers */}
+        <div ref={popoverAnchorRef} className="fixed pointer-events-none z-[100]" />
+
+        {/* Batch Edit Popover (Triggered by ALT+Click or CTRL+Drag or Batch Edit Mode) */}
         <Popover open={popoverOpen} onOpenChange={(open) => {
           if (!open) {
             setPopoverOpen(false)
@@ -313,24 +529,24 @@ Return only JSON, no other text.`
           }
         }}>
           <PopoverTrigger asChild>
-            <div className="absolute" style={{
-              // We could calculate position, but let's just use the center or follow selection
-              left: '50%', top: '50%'
-            }} />
+             <div className="absolute" style={{
+               left: popoverAnchorRef.current?.style.left,
+               top: popoverAnchorRef.current?.style.top,
+               width: popoverAnchorRef.current?.style.width,
+               height: popoverAnchorRef.current?.style.height,
+             }} />
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-0 shadow-2xl bg-card border-border overflow-hidden rounded-lg">
-            <div className="bg-primary/5 px-4 py-2 border-b border-border flex items-center justify-between">
+          <PopoverContent className="w-80 p-0 shadow-2xl bg-card border-border overflow-hidden rounded-lg" side="top" align="center" sideOffset={5}>
+            <div className="bg-primary/10 px-4 py-2 border-b border-border flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3" />
-                Suggestions
+                <Wand2 className="w-3 h-3" />
+                Batch Edit
               </span>
-              <HelpIcon>{t("tutorialSuggestions")}</HelpIcon>
             </div>
 
             <div className="p-3 flex flex-col gap-3">
-              {/* Manual Input */}
               <div className="flex flex-col gap-1">
-                <label className="text-[9px] font-bold text-muted-foreground uppercase ml-0.5">Edit Token</label>
+                <label className="text-[9px] font-bold text-muted-foreground uppercase ml-0.5">Edit {batchSelected.length} tokens</label>
                 <div className="flex gap-2">
                   <input
                     autoFocus
@@ -348,55 +564,221 @@ Return only JSON, no other text.`
                   </button>
                 </div>
               </div>
-
-              {/* Suggestions List */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[9px] font-bold text-muted-foreground uppercase ml-0.5">Recommended</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {/* Punctuation (Algo) */}
-                  {activeToken && [",", ".", "!", "?"].map(p => (
-                    <button
-                      key={p}
-                      onClick={() => applyReplacement(activeToken.word + p)}
-                      className="bg-secondary hover:bg-secondary/80 text-[11px] font-mono px-2 py-1 rounded border border-border transition-colors"
-                    >
-                      {activeToken.word}{p}
-                    </button>
-                  ))}
-
-                  {/* Numbers (Algo) */}
-                  {activeToken && /^\d+$/.test(activeToken.word) && (
-                    <button
-                      onClick={() => applyReplacement(numberToIndonesianWords(activeToken.word))}
-                      className="w-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[11px] text-left px-3 py-2 rounded border border-blue-500/20 transition-colors flex flex-col"
-                    >
-                      <span className="font-bold">{numberToIndonesianWords(activeToken.word)}</span>
-                      <span className="text-[9px] opacity-70">Konversi ke kata</span>
-                    </button>
-                  )}
-
-                  {/* AI Suggestions */}
-                  {isAiLoading ? (
-                    <div className="w-full py-4 flex items-center justify-center">
-                      <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                    </div>
-                  ) : (
-                    aiSuggestions.map((s, i) => (
-                      <button
-                        key={i}
-                        onClick={() => applyReplacement(s.text)}
-                        className="w-full bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 text-[11px] text-left px-3 py-2 rounded border border-purple-500/20 transition-colors flex flex-col"
-                      >
-                        <span className="font-bold">{s.text}</span>
-                        <span className="text-[9px] opacity-70">{s.reason}</span>
-                      </button>
-                    ))
-                  )}
-                </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => applyReplacement("")}
+                  className="flex-1 bg-red-500/10 text-red-600 border border-red-500/20 py-2 rounded text-[10px] font-bold uppercase hover:bg-red-500/20 transition-colors"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(batchSelected.map(idx => input.split(/(\s+)/)[idx]).join(" "))
+                    setPopoverOpen(false)
+                  }}
+                  className="flex-1 bg-secondary border border-border py-2 rounded text-[10px] font-bold uppercase hover:bg-secondary/80 transition-colors"
+                >
+                  Copy
+                </button>
               </div>
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Suggestion Popover (Hover Desktop) */}
+        <Popover open={hoverPopoverOpen} onOpenChange={setHoverPopoverOpen}>
+           <PopoverTrigger asChild>
+              <div className="absolute" style={{
+                left: popoverAnchorRef.current?.style.left,
+                top: popoverAnchorRef.current?.style.top,
+                width: popoverAnchorRef.current?.style.width,
+                height: popoverAnchorRef.current?.style.height,
+              }} />
+           </PopoverTrigger>
+           <PopoverContent className="w-64 p-0 shadow-2xl bg-card border-border overflow-hidden rounded-xl" onMouseEnter={() => setHoverPopoverOpen(true)} onMouseLeave={() => setHoverPopoverOpen(false)} side="top" align="center" sideOffset={5}>
+              <div className="bg-primary/5 px-4 py-2 border-b border-border flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3" />
+                  Suggestions
+                </span>
+              </div>
+
+              <div className="p-2 flex flex-col gap-2 max-h-80 overflow-y-auto">
+                {hoverToken && (
+                  <>
+                    {/* Algorithm Suggestions grouped by category */}
+                    {Object.entries(
+                      getAlgoSuggestions(hoverToken.word).reduce((acc, s) => {
+                        if (!acc[s.category]) acc[s.category] = []
+                        acc[s.category].push(s)
+                        return acc
+                      }, {} as Record<string, any[]>)
+                    ).map(([category, items]) => (
+                      <div key={category} className="flex flex-col gap-1">
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase px-1">{category}</p>
+                        {items.map((s, i) => (
+                          <button
+                            key={i}
+                            onClick={() => applyReplacement(s.text, [hoverToken.index])}
+                            className="w-full text-left px-3 py-1.5 hover:bg-primary/5 rounded font-mono text-xs flex justify-between items-center transition-colors"
+                          >
+                            <span>{s.text}</span>
+                            <span className="text-[9px] text-muted-foreground opacity-70">{s.reason}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+
+                    {/* AI Suggestions */}
+                    {(isAiLoading || aiSuggestions.length > 0) && (
+                      <div className="flex flex-col gap-1 pt-1 border-t border-border/50">
+                        <p className="text-[9px] font-bold text-purple-600 uppercase px-1">Koreksi</p>
+                        {isAiLoading ? (
+                           <div className="py-2 flex justify-center"><div className="w-3 h-3 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" /></div>
+                        ) : (
+                          aiSuggestions.map((s, i) => (
+                            <button
+                              key={i}
+                              onClick={() => applyReplacement(s.text, [hoverToken.index])}
+                              className="w-full text-left px-3 py-1.5 hover:bg-purple-500/5 rounded font-mono text-xs flex flex-col transition-colors border border-transparent hover:border-purple-500/20"
+                            >
+                              <span className="font-bold text-purple-700 dark:text-purple-400">{s.text}</span>
+                              <span className="text-[9px] text-muted-foreground">{s.reason}</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+           </PopoverContent>
+        </Popover>
+
+        {/* Mobile Bottom Sheet (Vaul) */}
+        <Drawer.Root open={showMobileSheet} onOpenChange={setShowMobileSheet}>
+          <Drawer.Portal>
+            <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+            <Drawer.Content className="bg-card flex flex-col rounded-t-[20px] h-auto max-h-[85vh] fixed bottom-0 left-0 right-0 z-50 outline-none border-t border-border shadow-2xl">
+              <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted-foreground/20 my-4" />
+
+              <div className="p-4 pt-0 overflow-y-auto scrollbar-none">
+                <div className="flex flex-col gap-1 mb-4">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Token dipilih</p>
+                  <p className="text-xl font-mono font-bold text-primary">{hoverToken?.word}</p>
+                </div>
+
+                <div className="h-px bg-border/50 mb-4" />
+
+                <div className="flex flex-col gap-4 pb-8">
+                  {hoverToken && (
+                    <>
+                      {/* Algorithm Suggestions grouped by category */}
+                      {Object.entries(
+                        getAlgoSuggestions(hoverToken.word).reduce((acc, s) => {
+                          if (!acc[s.category]) acc[s.category] = []
+                          acc[s.category].push(s)
+                          return acc
+                        }, {} as Record<string, any[]>)
+                      ).map(([category, items]) => (
+                        <div key={category} className="flex flex-col gap-2">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{category}</p>
+                          <div className="grid grid-cols-1 gap-2">
+                            {items.map((s, i) => (
+                              <button
+                                key={i}
+                                onClick={() => {
+                                  applyReplacement(s.text, [hoverToken.index])
+                                  setShowMobileSheet(false)
+                                }}
+                                className="w-full text-left px-4 py-3 bg-secondary/50 active:bg-secondary rounded-xl font-mono text-sm flex justify-between items-center transition-all border border-border/50"
+                              >
+                                <span>{s.text}</span>
+                                <span className="text-xs text-muted-foreground opacity-60">{s.reason}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* AI Suggestions */}
+                      {(isAiLoading || aiSuggestions.length > 0) && (
+                        <div className="flex flex-col gap-2 pt-2 border-t border-border/30">
+                          <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Koreksi AI</p>
+                          {isAiLoading ? (
+                             <div className="py-8 flex justify-center"><div className="w-6 h-6 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" /></div>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-2">
+                              {aiSuggestions.map((s, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => {
+                                    applyReplacement(s.text, [hoverToken.index])
+                                    setShowMobileSheet(false)
+                                  }}
+                                  className="w-full text-left px-4 py-3 bg-purple-500/5 active:bg-purple-500/10 rounded-xl font-mono text-sm flex flex-col transition-all border border-purple-500/10"
+                                >
+                                  <span className="font-bold text-purple-700 dark:text-purple-400">{s.text}</span>
+                                  <span className="text-xs text-muted-foreground">{s.reason}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-4 pt-2 border-t border-border bg-card">
+                 <button
+                  onClick={() => setShowMobileSheet(false)}
+                  className="w-full py-4 bg-secondary text-muted-foreground font-bold rounded-xl active:scale-[0.98] transition-transform"
+                 >
+                   Tutup
+                 </button>
+              </div>
+            </Drawer.Content>
+          </Drawer.Portal>
+        </Drawer.Root>
+
+        {/* Batch Toolbar Mobile (Visible when tokens are selected) */}
+        {isTouchDevice && batchSelected.length > 0 && (
+           <div className="fixed bottom-0 left-0 right-0 z-[60] bg-card border-t border-border shadow-[0_-10px_40px_rgba(0,0,0,0.1)] flex items-center justify-around px-4 py-4 animate-in slide-in-from-bottom duration-300">
+             <button
+               onClick={() => setPopoverOpen(true)}
+               className="flex flex-col items-center gap-1 text-primary active:scale-90 transition-transform"
+             >
+               <Wand2 className="w-5 h-5" />
+               <span className="text-[10px] font-bold uppercase tracking-tighter">Ganti</span>
+             </button>
+             <button
+               onClick={() => applyReplacement("")}
+               className="flex flex-col items-center gap-1 text-red-500 active:scale-90 transition-transform"
+             >
+               <AlertTriangle className="w-5 h-5" />
+               <span className="text-[10px] font-bold uppercase tracking-tighter">Hapus</span>
+             </button>
+             <button
+               onClick={() => {
+                 navigator.clipboard.writeText(batchSelected.map(idx => input.split(/(\s+)/)[idx]).join(" "))
+                 setBatchSelected([])
+               }}
+               className="flex flex-col items-center gap-1 text-muted-foreground active:scale-90 transition-transform"
+             >
+               <Info className="w-5 h-5" />
+               <span className="text-[10px] font-bold uppercase tracking-tighter">Salin</span>
+             </button>
+             <button
+               onClick={() => setBatchSelected([])}
+               className="flex flex-col items-center gap-1 text-muted-foreground/40 active:scale-90 transition-transform"
+             >
+               <HelpCircle className="w-5 h-5" />
+               <span className="text-[10px] font-bold uppercase tracking-tighter">Batal</span>
+             </button>
+           </div>
+        )}
       </div>
 
       {/* Control Panel */}
@@ -483,7 +865,7 @@ Return only JSON, no other text.`
                 </div>
               </label>
 
-              <label className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border cursor-pointer hover:bg-card transition-colors select-none col-span-1 sm:col-span-2">
+              <label className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border cursor-pointer hover:bg-card transition-colors select-none">
                 <input
                   type="checkbox"
                   checked={autoCapital}
@@ -491,8 +873,26 @@ Return only JSON, no other text.`
                   className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
                 <div className="flex items-center gap-1">
-                  <span className="font-mono text-xs font-bold uppercase">Auto Capital after . ! ?</span>
+                  <span className="font-mono text-xs font-bold uppercase">Auto Capital</span>
                   <HelpIcon>{t("filterAutoCapital")}</HelpIcon>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border cursor-pointer hover:bg-card transition-colors select-none">
+                <input
+                  type="checkbox"
+                  checked={batchEditEnabled}
+                  onChange={(e) => setBatchEditEnabled(e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-xs font-bold uppercase">Batch Edit</span>
+                  <HelpIcon>
+                    Batch Edit
+                    {"\n"}Aktifkan untuk mengedit semua kata identik sekaligus.
+                    {"\n"}Klik kata → semua yang sama terpilih → edit satu → semua berubah.
+                    {"\n"}Tanpa Batch Edit: ALT+Click untuk select massal.
+                  </HelpIcon>
                 </div>
               </label>
            </div>
