@@ -697,9 +697,6 @@ export function TranscriptionForm() {
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center gap-2">
                     {t("v2Title")}
-                    <span className="px-1.5 py-0.5 rounded-full bg-secondary text-[9px] font-bold uppercase tracking-tighter text-muted-foreground border border-border">
-                      Beta
-                    </span>
                   </div>
                   <HelpIcon>{t("tutorialModeV2")}</HelpIcon>
                 </div>
@@ -720,7 +717,10 @@ export function TranscriptionForm() {
               } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <span className="font-mono text-sm font-bold flex flex-col items-start gap-1">
-                {t("v3Title")}
+                <div className="flex items-center gap-2">
+                  {t("v3Title")}
+                  <span className="text-xs bg-yellow-400 text-black px-1 rounded">Beta</span>
+                </div>
                 <span className="text-[9px] font-bold text-purple-600/70 bg-purple-500/5 px-1.5 py-0.5 rounded border border-purple-500/10">
                   {t("tagQC")}
                 </span>
