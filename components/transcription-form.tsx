@@ -5,6 +5,7 @@ import { TranscriptionCard } from "./transcription-card"
 import { FilterCustom } from "./filter-custom"
 import { StatusIndicator, StatusState } from "./status-indicator"
 import { calculateScoring, ScoringResult } from "@/lib/scoring"
+import { protectAcronyms, restoreAcronyms } from "@/lib/text-utils"
 import { Kbd } from "@/components/ui/kbd"
 import { useLanguage } from "./language-provider"
 import {
@@ -20,26 +21,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { TranslationKey } from "@/lib/translations"
+import { HelpIcon } from "./ui/help-icon"
 
 type Provider = "groq" | "google" | "aiml" | "openrouter"
-
-function HelpIcon({ contentKey }: { contentKey: TranslationKey }) {
-  const { t } = useLanguage()
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button className="ml-1 text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full border border-slate-300 dark:border-slate-600 w-3.5 h-3.5 flex items-center justify-center cursor-pointer transition-colors">
-          ?
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-4 shadow-xl bg-popover text-popover-foreground border-border">
-        <div className="font-mono text-xs whitespace-pre-wrap leading-relaxed">
-          {t(contentKey)}
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-}
 
 const PROMPT_BIASA = `Perbaiki teks input. Semua output dalam satu paragraf.
 
@@ -233,19 +217,24 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
     const original = finalWordsArray[i]
     let word = original
 
-    // 1. Enforce Lowercase unless capitalized in input or after sentence ender
-    const afterSentenceEnder = i > 0 && /[.!?]$/.test(finalWordsArray[i-1])
-    const wasCapitalizedInInput = inputCapitalizedIndices.has(i)
+    // Acronym Protection: If it's an acronym, don't change its case
+    const isAcronym = /\b[A-Z]{2,}\b/.test(word.replace(punctuationRegex, ""))
 
-    if (i === 0 || afterSentenceEnder || wasCapitalizedInInput) {
-      // Keep or make capitalized
-      if (/^[a-z]/.test(word)) {
-        word = word[0].toUpperCase() + word.slice(1)
-      }
-    } else {
-      // Make lowercase
-      if (/^[A-Z]/.test(word)) {
-        word = word[0].toLowerCase() + word.slice(1)
+    if (!isAcronym) {
+      // 1. Enforce Lowercase unless capitalized in input or after sentence ender
+      const afterSentenceEnder = i > 0 && /[.!?]$/.test(finalWordsArray[i-1])
+      const wasCapitalizedInInput = inputCapitalizedIndices.has(i)
+
+      if (i === 0 || afterSentenceEnder || wasCapitalizedInInput) {
+        // Keep or make capitalized
+        if (/^[a-z]/.test(word)) {
+          word = word[0].toUpperCase() + word.slice(1)
+        }
+      } else {
+        // Make lowercase
+        if (/^[A-Z]/.test(word)) {
+          word = word[0].toLowerCase() + word.slice(1)
+        }
       }
     }
 
@@ -306,9 +295,10 @@ function algorithmicFixer(input: string, output: string): { result: string; chan
   // FINAL CAPITALIZATION PASS (Rule: First word and words after . ! ? always capitalized)
   for (let i = 0; i < finalWordsArray.length; i++) {
     const word = finalWordsArray[i]
+    const isAcronym = /\b[A-Z]{2,}\b/.test(word.replace(punctuationRegex, ""))
     const shouldCapitalize = i === 0 || (i > 0 && /[.!?]$/.test(finalWordsArray[i - 1]))
 
-    if (shouldCapitalize && /^[a-z]/.test(word)) {
+    if (shouldCapitalize && /^[a-z]/.test(word) && !isAcronym) {
       const capitalized = word[0].toUpperCase() + word.slice(1)
       finalWordsArray[i] = capitalized
       // Track as change if it wasn't already tracked
@@ -664,7 +654,7 @@ export function TranscriptionForm() {
               <span className="font-mono text-sm font-bold flex flex-col items-start gap-1 w-full">
                 <div className="flex items-center justify-between w-full">
                   {t("biasaTitle")}
-                  <HelpIcon contentKey="tutorialModeBiasa" />
+                  <HelpIcon>{t("tutorialModeBiasa")}</HelpIcon>
                 </div>
                 <span className="text-[9px] font-bold text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
                   {t("tagAnnotator")}
@@ -685,7 +675,7 @@ export function TranscriptionForm() {
               <span className="font-mono text-sm font-bold flex flex-col items-start gap-1 w-full">
                 <div className="flex items-center justify-between w-full">
                   {t("v1Title")}
-                  <HelpIcon contentKey="tutorialModeV1" />
+                  <HelpIcon>{t("tutorialModeV1")}</HelpIcon>
                 </div>
                 <span className="text-[9px] font-bold text-muted-foreground/60 bg-secondary px-1.5 py-0.5 rounded border border-border">
                   {t("tagLessRecommended")}
@@ -711,7 +701,7 @@ export function TranscriptionForm() {
                       Beta
                     </span>
                   </div>
-                  <HelpIcon contentKey="tutorialModeV2" />
+                  <HelpIcon>{t("tutorialModeV2")}</HelpIcon>
                 </div>
                 <span className="text-[9px] font-bold text-primary/70 bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10">
                   {t("tagRecommended")}
@@ -790,7 +780,7 @@ export function TranscriptionForm() {
               >
                 {t("flatTextButton")}
               </button>
-              <HelpIcon contentKey="tutorialFlatText" />
+              <HelpIcon>{t("tutorialFlatText")}</HelpIcon>
             </div>
           )}
         </div>

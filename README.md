@@ -54,7 +54,8 @@ cd -Fadhil-Annotation-Dingtag-project
 npm install
 
 # Setup environment
-# Buat file .env dan masukkan API Key Anda (GEMINI_API_KEY, GROQ_API_KEY, dll)
+cp .env.example .env
+# Edit .env dengan API Key Anda (GEMINI_API_KEY, GROQ_API_KEY, dll)
 
 # Run development
 npm run dev
@@ -82,7 +83,12 @@ Deskripsi: Memproses teks berdasarkan mode dan provider yang dipilih.
 ```json
 {
   "result": "teks hasil pemrosesan",
-  "scoring": { ... }
+  "scoring": {
+    "score": 100,
+    "highlights": [
+      { "text": "kata", "type": "correct | added | missing | changed | normal" }
+    ]
+  }
 }
 ```
 
@@ -149,7 +155,8 @@ cd -Fadhil-Annotation-Dingtag-project
 npm install
 
 # Setup environment
-# Create a .env file and add your API Keys (GEMINI_API_KEY, GROQ_API_KEY, etc.)
+cp .env.example .env
+# Edit .env with your API Keys (GEMINI_API_KEY, GROQ_API_KEY, etc.)
 
 # Run development
 npm run dev
@@ -177,7 +184,12 @@ Description: Processes text based on the selected mode and provider.
 ```json
 {
   "result": "processed text result",
-  "scoring": { ... }
+  "scoring": {
+    "score": 100,
+    "highlights": [
+      { "text": "word", "type": "correct | added | missing | changed | normal" }
+    ]
+  }
 }
 ```
 
@@ -244,7 +256,8 @@ cd -Fadhil-Annotation-Dingtag-project
 npm install
 
 # Setup environment
-# 创建 .env 文件并添加您的 API 密钥 (GEMINI_API_KEY, GROQ_API_KEY 等)
+cp .env.example .env
+# 编辑 .env 文件并添加您的 API 密钥 (GEMINI_API_KEY, GROQ_API_KEY 等)
 
 # Run development
 npm run dev
@@ -272,7 +285,12 @@ npx vercel deploy
 ```json
 {
   "result": "处理后的文本结果",
-  "scoring": { ... }
+  "scoring": {
+    "score": 100,
+    "highlights": [
+      { "text": "词汇", "type": "correct | added | missing | changed | normal" }
+    ]
+  }
 }
 ```
 
