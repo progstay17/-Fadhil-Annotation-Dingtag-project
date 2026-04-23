@@ -1,17 +1,18 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
+import React, { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } from "react"
 import { useLanguage } from "./language-provider"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Drawer } from "vaul"
 import { HelpIcon } from "./ui/help-icon"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
 import {
   applyFormatWithProtection,
+  applySentenceCase,
   formatPreservingReplace,
   getRepeatedWordsIndices,
   numberToIndonesianWords,
+  wordsToNumber,
 } from "@/lib/text-utils"
 import { TranslationKey } from "@/lib/translations"
 import { Info, HelpCircle, AlertTriangle, Sparkles, Wand2 } from "lucide-react"
@@ -39,15 +40,48 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
   const [formatMode, setFormatMode] = useState<FormatMode>("none")
   const [smartReplaceMode, setSmartReplaceMode] = useState<SmartReplaceMode>("format-preserving")
   const [autoCapital, setAutoCapital] = useState(false)
+  const [autoLowercase, setAutoLowercase] = useState(false)
+  const [autoSentence, setAutoSentence] = useState(false)
+  const [autoFixSpace, setAutoFixSpace] = useState(false)
 
   // Interaction States
-  const [activeToken, setActiveToken] = useState<{ word: string, index: number } | null>(null)
-  const [batchSelected, setBatchSelected] = useState<number[]>([])
+  const [activeToken, setActiveToken] = useState<{ word: string, start: number, end: number } | null>(null)
+  const [batchSelected, setBatchSelected] = useState<{ word: string, start: number, end: number }[]>([])
   const [batchEditEnabled, setBatchEditEnabled] = useState(false)
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 })
   const [replaceTokenInput, setReplaceTokenInput] = useState("")
-  const [aiSuggestions, setAiSuggestions] = useState<{ text: string, reason: string }[]>([])
-  const [isAiLoading, setIsAiLoading] = useState(false)
+
+  // History State
+  const MAX_HISTORY = 100
+  const historyStack = useRef<string[]>([])
+  const historyIndex = useRef(-1)
+
+  const pushHistory = useCallback((text: string) => {
+    // Remove any forward history
+    historyStack.current = historyStack.current.slice(0, historyIndex.current + 1)
+    // Push new state
+    historyStack.current.push(text)
+    // Limit size
+    if (historyStack.current.length > MAX_HISTORY) {
+      historyStack.current.shift()
+    }
+    historyIndex.current = historyStack.current.length - 1
+  }, [])
+
+  const undo = useCallback(() => {
+    if (historyIndex.current > 0) {
+      historyIndex.current--
+      setInput(historyStack.current[historyIndex.current])
+    }
+  }, [setInput])
+
+  const redo = useCallback(() => {
+    if (historyIndex.current < historyStack.current.length - 1) {
+      historyIndex.current++
+      setInput(historyStack.current[historyIndex.current])
+    }
+  }, [setInput])
 
   const [ctrlDragStart, setCtrlDragStart] = useState<number | null>(null)
   const [showMobileSheet, setShowMobileSheet] = useState(false)
@@ -56,10 +90,8 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
   const touchStartPos = useRef<{ x: number, y: number } | null>(null)
   const [isScrolling, setIsScrolling] = useState(false)
 
-  // Refs for scroll sync
+  // Refs for editor
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const overlayRef = useRef<HTMLDivElement>(null)
-  const popoverAnchorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -69,96 +101,156 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
     )
   }, [])
 
-  const handleScroll = () => {
-    if (textareaRef.current && overlayRef.current) {
-      overlayRef.current.scrollTop = textareaRef.current.scrollTop
-      overlayRef.current.scrollLeft = textareaRef.current.scrollLeft
+  // Keyboard binding for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        redo()
+        return
+      }
+      if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        undo()
+        return
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [undo, redo])
+
+  const TOKEN_REGEX = /[^a-zA-Z0-9]*[a-zA-Z0-9]+[^a-zA-Z0-9]*/g
+
+  const splitToken = (token: string) => {
+    const match = token.match(/^([^a-zA-Z0-9]*)([a-zA-Z0-9]+)([^a-zA-Z0-9]*)$/)
+    if (!match) return { leading: '', core: token, trailing: '' }
+    return {
+      leading: match[1],
+      core: match[2],
+      trailing: match[3]
     }
   }
 
-  // LAYER 1: DETECTION (REAL-TIME HIGHLIGHT)
-  const renderOverlay = () => {
-    const { tokens, indices } = getRepeatedWordsIndices(input)
-
-    return tokens.map((token, i) => {
-      const isRepeated = indices.includes(i)
-      const isBatchSelected = batchSelected.includes(i)
-
-      return (
-        <span
-          key={i}
-          data-index={i}
-          className={cn(
-            "token-span rounded-sm transition-colors",
-              isRepeated && !isBatchSelected && "bg-yellow-200 dark:invert",
-            isBatchSelected && "bg-blue-200 dark:bg-blue-500/30",
-            !isRepeated && !isBatchSelected && "text-transparent"
-          )}
-        >
-          {token}
-        </span>
-      )
-    })
-  }
-
-  // LAYER 2 & 3: ENGINE EXECUTION
-  const processedText = useMemo(() => {
-    let text = input
+  // Engine Implementation
+  const runEngine = useCallback((text: string) => {
+    let result = text
 
     // 1. Find & Replace
     if (findValue.trim()) {
       const targets = findValue.split(/\s+/).filter(t => t.length > 0)
       targets.forEach(target => {
         if (smartReplaceMode === "format-preserving") {
-          // Use regex to find tokens and replace preserving format
           const escapedTarget = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
           const regex = new RegExp(`(\\b|\\s|^)(${escapedTarget})(\\b|\\s|$)`, 'g')
-          text = text.replace(regex, (match, p1, p2, p3) => {
+          result = result.replace(regex, (match, p1, p2, p3) => {
             return p1 + formatPreservingReplace(p2, replaceValue) + p3
           })
         } else {
-          text = text.replaceAll(target, replaceValue)
+          result = result.replaceAll(target, replaceValue)
         }
       })
     }
 
     // 2. Add Strip
     if (stripEnabled) {
-      // kata kata -> kata-kata, including affixes
-      text = text.replace(/\b(\w+)\s+\1(nya|ku|mu|lah|kah|pun)?\b/gi, '$1-$1$2')
+      // Improved Add Strip: Udah udah -> Udah-udah
+      result = result.replace(/\b([a-zA-Z0-9]+)\s+\1\b/gi, (match, word1) => {
+        // Result = word1 + "-" + lowercase(word2)
+        // Here match is "word1 word2" where word1 === word2 (case insensitive)
+        const words = match.split(/\s+/)
+        return words[0] + '-' + words[1].toLowerCase()
+      })
     }
 
     // 3. Remove Line Break
     if (removeLineBreak) {
-      text = text.replace(/\n+/g, ' ')
+      result = result.replace(/\n+/g, ' ')
     }
 
-    // 4. Format Huruf (with Acronym Protection)
+    // 4. Format Huruf
     if (formatMode !== "none") {
-      text = applyFormatWithProtection(text, (t) => {
+      result = applyFormatWithProtection(result, (t) => {
         if (formatMode === "lower") return t.toLowerCase()
         if (formatMode === "upper") return t.toUpperCase()
-        if (formatMode === "sentence") return t.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g, c => c.toUpperCase())
+        if (formatMode === "sentence") return applySentenceCase(t)
         if (formatMode === "capitalize") return t.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
         if (formatMode === "toggle") return t.split("").map(c => c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()).join("")
         return t
       })
     }
 
-    // 5. Auto Capital (with Acronym Protection)
+    // 5. Smart Replace (Placeholder for existing UI consistency if needed, though Find/Replace is already there)
+
+    // 6. Auto Capital After .!? (if ON)
     if (autoCapital) {
-      text = applyFormatWithProtection(text, (t) => {
+      result = applyFormatWithProtection(result, (t) => {
         return t.replace(/([.!?]\s+)([a-z])/g, (_, punct, char) =>
           punct + char.toUpperCase()
         )
       })
     }
 
-    // Final clean up: collapse multiple spaces
-    text = text.replace(/\s{2,}/g, ' ').trim()
+    // 7. Auto Sentence Case (if ON)
+    if (autoSentence) {
+      result = applySentenceCase(result)
+    }
 
-    return text
-  }, [input, findValue, replaceValue, stripEnabled, removeLineBreak, formatMode, smartReplaceMode, autoCapital])
+    // 8. Auto Lowercase (if ON)
+    if (autoLowercase) {
+      if (autoSentence) {
+        result = result.toLowerCase()
+        result = applySentenceCase(result)
+      } else {
+        // Protect acronyms, lowercase rest
+        const acronyms: string[] = []
+        let protectedText = result.replace(/\b[A-Z]{2,}\b/g, match => {
+          acronyms.push(match)
+          return `__ACR${acronyms.length - 1}__`
+        })
+        protectedText = protectedText.replace(/\b[A-Z][a-z]*\b/g, w => w.toLowerCase())
+        result = protectedText.replace(/__ACR(\d+)__/g, (_, i) => acronyms[parseInt(i)])
+      }
+    }
+
+    // 9. Auto Fix Space (ALWAYS LAST)
+    if (autoFixSpace) {
+      result = result
+        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+    }
+
+    return result
+  }, [findValue, replaceValue, smartReplaceMode, stripEnabled, removeLineBreak, formatMode, autoCapital, autoSentence, autoLowercase, autoFixSpace])
+
+  // Live Auto-apply
+  const lastInput = useRef(input)
+  const isInternalUpdate = useRef(false)
+
+  useEffect(() => {
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false
+      return
+    }
+
+    const processed = runEngine(input)
+    if (processed !== input) {
+      isInternalUpdate.current = true
+      setInput(processed)
+      // Debounced push history for typing
+      const timer = setTimeout(() => {
+        pushHistory(processed)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [input, runEngine, setInput, pushHistory])
+
+  // Initial history push
+  useEffect(() => {
+    if (historyIndex.current === -1 && input) {
+      pushHistory(input)
+    }
+  }, [input, pushHistory])
 
   // Sync editor with engine result (optional, but requested by VISION: single editor)
   // We apply the transformation when requested or auto-apply?
@@ -166,10 +258,6 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
   // VISION says "Everything happens in one unified editor space."
   // For now, let's show the result and allow "Sync to Editor" or auto-apply if toggled.
   // Given the "Text Processing Engine" description, we'll make it live update.
-
-  const applyEngine = useCallback(() => {
-    setInput(processedText)
-  }, [processedText, setInput])
 
   const handleCopy = () => {
     navigator.clipboard.writeText(input)
@@ -181,114 +269,184 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
   }
 
   const getTokenInfoAtPos = (pos: number) => {
-    const tokens = input.split(/(\s+)/)
-    let currentPos = 0
-    for (let i = 0; i < tokens.length; i++) {
-      const token = tokens[i]
-      if (pos >= currentPos && pos <= currentPos + token.length) {
-        // If it's whitespace, we might want the word before or after
-        if (/\s+/.test(token)) return null
-        return { word: token, index: i, start: currentPos, end: currentPos + token.length }
+    const matches = Array.from(input.matchAll(TOKEN_REGEX))
+    for (const match of matches) {
+      const start = match.index!
+      const end = start + match[0].length
+      if (pos >= start && pos <= end) {
+        return { word: match[0], start, end }
       }
-      currentPos += token.length
     }
     return null
   }
 
+  const [isCtrlDragging, setIsCtrlDragging] = useState(false)
+  const [ctrlDragStartPos, setCtrlDragStartPos] = useState<number | null>(null)
+
+  const isValidTokenClick = useCallback((pos: number) => {
+    const info = getTokenInfoAtPos(pos)
+    if (!info) return false
+    const text = info.word || ''
+    if (/^\s*$/.test(text)) return false
+    return true
+  }, [input])
+
+  const closeSuggestionPanel = useCallback(() => {
+    setPopoverOpen(false)
+    setActiveToken(null)
+    setBatchSelected([])
+  }, [])
+
+  const getSmartPosition = (tokenRect: { top: number, bottom: number, left: number, right: number }, popupWidth: number, popupHeight: number) => {
+    const viewport = {
+      width: window.innerWidth,
+      height: window.innerHeight
+    }
+
+    const MARGIN = 8
+
+    let top = tokenRect.bottom + MARGIN
+    let left = tokenRect.left
+
+    // Flip vertical: not enough space below → show above
+    if (top + popupHeight > viewport.height - MARGIN) {
+      top = tokenRect.top - popupHeight - MARGIN
+    }
+
+    // Flip horizontal: not enough space on right → shift left
+    if (left + popupWidth > viewport.width - MARGIN) {
+      left = viewport.width - popupWidth - MARGIN
+    }
+
+    // Never go off left edge
+    if (left < MARGIN) left = MARGIN
+
+    // Never go off top edge
+    if (top < MARGIN) top = MARGIN
+
+    return { top, left }
+  }
+
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  const selectAllIdenticalTokens = useCallback((word: string) => {
+    const matches: { word: string, start: number, end: number }[] = []
+    const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    // Match word with surrounding punctuation if needed, or just core?
+    // Usually "identical tokens" means the whole token including punct.
+    const regex = new RegExp(`(?<=\\s|^)${escapedWord}(?=\\s|$)`, 'g')
+    let match
+    while ((match = regex.exec(input)) !== null) {
+      matches.push({ word: match[0], start: match.index, end: match.index + match[0].length })
+    }
+    setBatchSelected(matches)
+  }, [input])
+
   const handleEditorClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLTextAreaElement
     const pos = target.selectionStart
-    const tokenInfo = getTokenInfoAtPos(pos)
 
-    if (!tokenInfo) {
-      setPopoverOpen(false)
-      setBatchSelected([])
-      setActiveToken(null)
+    if (!isValidTokenClick(pos)) {
+      closeSuggestionPanel()
       return
     }
 
-    // ALT + Click -> batch select (checklist says no panel)
-    if (e.altKey) {
-      e.preventDefault()
-      const tokens = input.split(/(\s+)/)
-      const matches: number[] = []
-      tokens.forEach((t, i) => {
-        if (t === tokenInfo.word) matches.push(i)
-      })
-      setBatchSelected(matches)
-      setActiveToken({ word: tokenInfo.word, index: tokenInfo.index })
-      setPopoverOpen(false)
-      return
+    if (e.altKey) return // handled by mousedown
+
+    const info = getTokenInfoAtPos(pos)!
+    setActiveToken(info)
+    setReplaceTokenInput(info.word)
+
+    const tokenRect = {
+      bottom: e.clientY,
+      top: e.clientY,
+      left: e.clientX,
+      right: e.clientX
     }
 
-    // Click on token -> show panel
-    const tokens = input.split(/(\s+)/)
-    const matches: number[] = []
-    if (batchEditEnabled) {
-      tokens.forEach((t, i) => {
-        if (t === tokenInfo.word) matches.push(i)
-      })
-    } else {
-      matches.push(tokenInfo.index)
-    }
-
-    setBatchSelected(matches)
-    setActiveToken({ word: tokenInfo.word, index: tokenInfo.index })
-    setReplaceTokenInput(tokenInfo.word)
-    fetchAiSuggestions(tokenInfo.word, input)
-
-    if (popoverAnchorRef.current) {
-      const span = overlayRef.current?.querySelector(`[data-index="${tokenInfo.index}"]`)
-      if (span) {
-        const rect = span.getBoundingClientRect()
-        popoverAnchorRef.current.style.left = `${rect.left}px`
-        popoverAnchorRef.current.style.top = `${rect.top}px`
-        popoverAnchorRef.current.style.width = `${rect.width}px`
-        popoverAnchorRef.current.style.height = `${rect.height}px`
-      }
-    }
+    const pos_smart = getSmartPosition(tokenRect, 320, 400)
+    setPopoverPosition(pos_smart)
     setPopoverOpen(true)
   }
 
   const handleEditorMouseDown = (e: React.MouseEvent) => {
-    if (e.ctrlKey) {
-      const target = e.target as HTMLTextAreaElement
-      const tokenInfo = getTokenInfoAtPos(target.selectionStart)
-      if (tokenInfo) {
-        setCtrlDragStart(tokenInfo.index)
+    const target = e.target as HTMLTextAreaElement
+    const pos = target.selectionStart
+
+    // ALT + Click → batch select
+    if (e.altKey) {
+      e.preventDefault()
+      const info = getTokenInfoAtPos(pos)
+      if (info) {
+        selectAllIdenticalTokens(info.word)
+        setActiveToken(info)
+        const tokenRect = { bottom: e.clientY, top: e.clientY, left: e.clientX, right: e.clientX }
+        const pos_smart = getSmartPosition(tokenRect, 320, 400)
+        setPopoverPosition(pos_smart)
+        setPopoverOpen(true)
       }
+      return
+    }
+
+    // CTRL + mousedown → start range selection
+    if (e.ctrlKey) {
+      e.preventDefault()
+      const info = getTokenInfoAtPos(pos)
+      if (info) {
+        setCtrlDragStartPos(pos)
+        setIsCtrlDragging(true)
+      }
+      return
+    }
+  }
+
+  const handleEditorMouseMove = (e: React.MouseEvent) => {
+    if (isCtrlDragging && e.ctrlKey) {
+      // visual feedback could be implemented here
     }
   }
 
   const handleEditorMouseUp = (e: React.MouseEvent) => {
-    if (e.ctrlKey && ctrlDragStart !== null) {
+    if (isCtrlDragging) {
+      setIsCtrlDragging(false)
       const target = e.target as HTMLTextAreaElement
-      const tokenInfo = getTokenInfoAtPos(target.selectionStart)
-      if (tokenInfo) {
-        const start = Math.min(ctrlDragStart, tokenInfo.index)
-        const end = Math.max(ctrlDragStart, tokenInfo.index)
-        const tokens = input.split(/(\s+)/)
-        const matches: number[] = []
-        for (let i = start; i <= end; i++) {
-          if (i % 2 === 0) matches.push(i)
-        }
-        setBatchSelected(matches)
-        setActiveToken({ word: tokens[matches[0]], index: matches[0] })
-        setReplaceTokenInput(tokens[matches[0]])
+      const endPos = target.selectionEnd
+      if (ctrlDragStartPos !== null) {
+        const start = Math.min(ctrlDragStartPos, endPos)
+        const end = Math.max(ctrlDragStartPos, endPos)
 
-        if (popoverAnchorRef.current) {
-          const span = overlayRef.current?.querySelector(`[data-index="${matches[0]}"]`)
-          if (span) {
-            const rect = span.getBoundingClientRect()
-            popoverAnchorRef.current.style.left = `${rect.left}px`
-            popoverAnchorRef.current.style.top = `${rect.top}px`
-            popoverAnchorRef.current.style.width = `${rect.width}px`
-            popoverAnchorRef.current.style.height = `${rect.height}px`
+        const matches: { word: string, start: number, end: number }[] = []
+        const tokenMatches = Array.from(input.matchAll(TOKEN_REGEX))
+        for (const m of tokenMatches) {
+          if (m.index! >= start && m.index! + m[0].length <= end) {
+            matches.push({ word: m[0], start: m.index!, end: m.index! + m[0].length })
           }
         }
-        setPopoverOpen(true)
+
+        if (matches.length > 0) {
+          setBatchSelected(matches)
+          setActiveToken(matches[0])
+          const tokenRect = { bottom: e.clientY, top: e.clientY, left: e.clientX, right: e.clientX }
+          const pos_smart = getSmartPosition(tokenRect, 320, 400)
+          setPopoverPosition(pos_smart)
+          setPopoverOpen(true)
+        }
       }
-      setCtrlDragStart(null)
+      setCtrlDragStartPos(null)
+    }
+  }
+
+  const handleEditorDoubleClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLTextAreaElement
+    const pos = target.selectionStart
+    const info = getTokenInfoAtPos(pos)
+    if (info) {
+      selectAllIdenticalTokens(info.word)
+      setActiveToken(info)
+      const tokenRect = { bottom: e.clientY, top: e.clientY, left: e.clientX, right: e.clientX }
+      const pos_smart = getSmartPosition(tokenRect, 320, 400)
+      setPopoverPosition(pos_smart)
+      setPopoverOpen(true)
     }
   }
 
@@ -305,13 +463,8 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
     if (tokenInfo) {
       pressTimer.current = setTimeout(() => {
         if ('vibrate' in navigator) navigator.vibrate(30)
-        const tokens = input.split(/(\s+)/)
-        const matches: number[] = []
-        tokens.forEach((t, i) => {
-          if (t === tokenInfo.word) matches.push(i)
-        })
-        setBatchSelected(matches)
-        setActiveToken({ word: tokenInfo.word, index: tokenInfo.index })
+        selectAllIdenticalTokens(tokenInfo.word)
+        setActiveToken(tokenInfo)
         setReplaceTokenInput(tokenInfo.word)
         setPopoverOpen(true)
       }, 500)
@@ -344,119 +497,96 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
         return
       }
 
-      const tokens = input.split(/(\s+)/)
-      const matches: number[] = []
       if (batchEditEnabled) {
-        tokens.forEach((t, i) => {
-          if (t === tokenInfo.word) matches.push(i)
-        })
+        selectAllIdenticalTokens(tokenInfo.word)
       } else {
-        matches.push(tokenInfo.index)
+        setBatchSelected([tokenInfo])
       }
 
-      setBatchSelected(matches)
-      setActiveToken({ word: tokenInfo.word, index: tokenInfo.index })
+      setActiveToken(tokenInfo)
       setReplaceTokenInput(tokenInfo.word)
-      fetchAiSuggestions(tokenInfo.word, input)
       setShowMobileSheet(true)
     }
   }
 
+  const applyReplacement = useCallback((newWord: string) => {
+    if (!activeToken) return
+    let newText = input
 
-  const fetchAiSuggestions = async (token: string, context: string) => {
-    // Typo detection heuristic (Bug 6)
-    const likelyTypo = (t: string) => {
-      if (/(.)\1{2,}/.test(t)) return true
-      if (t.length <= 4 && !/^\d+$/.test(t)) return true
-      return false
-    }
-
-    if (!likelyTypo(token)) {
-      setAiSuggestions([])
-      return
-    }
-
-    setIsAiLoading(true)
-    try {
-      const response = await fetch("/api/transcribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: token,
-          provider: "google",
-          systemPrompt: `Kamu adalah asisten koreksi teks Bahasa Indonesia yang minimal.
-Konteks (read-only): "${context}"
-Token target: "${token}"
-
-Kembalikan HANYA JSON array, maksimal 3 item:
-[{ "text": "koreksi", "reason": "alasan singkat" }]
-
-Rules:
-- Hanya koreksi typo dan ejaan informal
-- JANGAN ubah gaya bahasa
-- JANGAN ubah konteks
-- Kembalikan JSON saja, tanpa teks lain`
-        }),
-      })
-      const data = await response.json()
-      if (data.result) {
-        try {
-          const parsed = JSON.parse(data.result)
-          setAiSuggestions(Array.isArray(parsed) ? parsed.slice(0, 3) : [])
-        } catch {
-          setAiSuggestions([])
-        }
+    if (batchSelected.length > 1) {
+      // Sort matches in reverse to avoid index shifting
+      const sortedMatches = [...batchSelected].sort((a, b) => b.start - a.start)
+      for (const m of sortedMatches) {
+        newText = newText.substring(0, m.start) + newWord + newText.substring(m.end)
       }
-    } catch {
-      // AI gagal -> hidden silently (Bug 6)
-      setAiSuggestions([])
-    } finally {
-      setIsAiLoading(false)
+    } else {
+      newText = newText.substring(0, activeToken.start) + newWord + newText.substring(activeToken.end)
     }
-  }
 
-  const applyReplacement = (newWord: string) => {
-    const tokens = input.split(/(\s+)/)
-    batchSelected.forEach(idx => {
-      tokens[idx] = newWord
-    })
-    setInput(tokens.join(""))
+    setInput(newText)
+    pushHistory(newText)
     setPopoverOpen(false)
     setShowMobileSheet(false)
     setBatchSelected([])
     setActiveToken(null)
-  }
+  }, [input, activeToken, batchSelected, setInput, pushHistory])
 
-  const getAlgoSuggestions = (token: string) => {
+  const deleteToken = useCallback((token: { word: string, start: number, end: number }) => {
+    let newText = input.substring(0, token.start) + input.substring(token.end)
+    // normalize spaces
+    newText = newText.replace(/\s{2,}/g, ' ').trim()
+    setInput(newText)
+    pushHistory(newText)
+    setPopoverOpen(false)
+    setShowMobileSheet(false)
+    setActiveToken(null)
+    setBatchSelected([])
+  }, [input, setInput, pushHistory])
+
+  const getAlgoSuggestions = useCallback((token: string) => {
+    const { leading, core, trailing } = splitToken(token)
     const suggestions: { category: string, text: string, reason: string }[] = []
 
-    // Kategori 1: Format Teks
-    if (/^[a-zA-Z]+$/.test(token)) {
-      suggestions.push({ category: "Format", text: token[0].toUpperCase() + token.slice(1).toLowerCase(), reason: "Capitalize" })
-      suggestions.push({ category: "Format", text: token.toUpperCase(), reason: "UPPERCASE" })
-      suggestions.push({ category: "Format", text: token.toLowerCase(), reason: "lowercase" })
+    // Kategori 1: Format
+    const formatSuggestions = [
+      { text: leading + core.toLowerCase() + trailing, reason: 'lowercase' },
+      { text: leading + core.toUpperCase() + trailing, reason: 'UPPERCASE' },
+      { text: leading + core[0].toUpperCase() + core.slice(1).toLowerCase() + trailing, reason: 'Capitalize' },
+    ].filter(s => s.text !== leading + core + trailing)
+
+    formatSuggestions.forEach(s => suggestions.push({ category: "Format", ...s }))
+
+    // Kategori 2: Tanda Baca — Tambah
+    const puncts = ['.', ',', '!', '?']
+    puncts
+      .filter(p => p !== trailing)
+      .forEach(p => suggestions.push({
+        category: "Tanda Baca",
+        text: leading + core + p,
+        reason: `tambah ${p}`
+      }))
+
+    // Kategori 3: Tanda Baca — Hapus
+    if (trailing || leading) {
+      suggestions.push({
+        category: "Tanda Baca",
+        text: core,
+        reason: 'hapus tanda baca'
+      })
     }
 
-    // Kategori 2 & 3: Tanda Baca
-    const wordPart = token.replace(/[.,!?]$/, "")
-    const hasPunct = /[.,!?]$/.test(token)
-
-    if (hasPunct) {
-      suggestions.push({ category: "Tanda Baca", text: wordPart, reason: "hapus tanda baca" })
+    // Kategori 6: Angka ⇄ Terbilang
+    if (/^\d+$/.test(core)) {
+      suggestions.push({ category: "Angka", text: leading + numberToIndonesianWords(core) + trailing, reason: 'terbilang' })
     } else {
-      suggestions.push({ category: "Tanda Baca", text: token + ",", reason: "tambah koma" })
-      suggestions.push({ category: "Tanda Baca", text: token + ".", reason: "tambah titik" })
-      suggestions.push({ category: "Tanda Baca", text: token + "!", reason: "tambah seru" })
-      suggestions.push({ category: "Tanda Baca", text: token + "?", reason: "tambah tanya" })
-    }
-
-    // Kategori 5: Angka -> Terbilang
-    if (/^\d+$/.test(token)) {
-      suggestions.push({ category: "Angka", text: numberToIndonesianWords(token), reason: "Konversi ke kata" })
+      const asNumber = wordsToNumber(core)
+      if (asNumber !== null) {
+        suggestions.push({ category: "Angka", text: leading + String(asNumber) + trailing, reason: 'ke angka' })
+      }
     }
 
     return suggestions
-  }
+  }, [])
 
   return (
     <div className="flex flex-col gap-6">
@@ -468,12 +598,6 @@ Rules:
             V3.3 Engine
             <HelpIcon>{t("tutorialSuggestions")}</HelpIcon>
           </span>
-          <button
-            onClick={() => setInput(processedText)}
-            className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded hover:bg-primary/20 transition-all font-bold uppercase"
-          >
-            Apply Engine
-          </button>
         </div>
         <div className="flex items-center gap-2">
            <button
@@ -504,7 +628,6 @@ Rules:
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onScroll={handleScroll}
             onClick={handleEditorClick}
             onMouseDown={handleEditorMouseDown}
             onMouseUp={handleEditorMouseUp}
@@ -514,143 +637,98 @@ Rules:
             placeholder={t("inputPlaceholder")}
             className="w-full h-full min-h-[300px] p-6 bg-transparent border-none outline-none font-mono text-sm leading-relaxed text-foreground resize-none placeholder:text-muted-foreground relative z-30 scrollbar-thin"
           />
-
-          {/* Interaction/Highlight Layer */}
-          <div
-            ref={overlayRef}
-            className="absolute inset-0 p-6 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words overflow-hidden text-transparent z-10 pointer-events-none"
-            style={{
-              font: "inherit",
-              padding: "inherit",
-              lineHeight: "inherit",
-            }}
-            aria-hidden="true"
-          >
-            {renderOverlay()}
-          </div>
         </div>
 
-        {/* Hidden Anchor for Popovers */}
-        <div ref={popoverAnchorRef} className="fixed pointer-events-none z-[100]" />
-
-        {/* Unified Suggestion Panel */}
-        <Popover open={popoverOpen} onOpenChange={(open) => {
-          if (!open) {
-            setPopoverOpen(false)
-            setBatchSelected([])
-            setActiveToken(null)
-          }
-        }}>
-          <PopoverTrigger asChild>
-             <div className="absolute" style={{
-               left: popoverAnchorRef.current?.style.left,
-               top: popoverAnchorRef.current?.style.top,
-               width: popoverAnchorRef.current?.style.width,
-               height: popoverAnchorRef.current?.style.height,
-             }} />
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-0 shadow-2xl bg-card border-border overflow-hidden rounded-xl" side="top" align="center" sideOffset={5}>
-            <div className={cn("px-4 py-3 border-b border-border flex items-center justify-between", batchEditEnabled ? "bg-yellow-500/5" : "bg-primary/5")}>
+        {/* Custom Suggestion Panel */}
+        {popoverOpen && activeToken && (
+          <div
+            ref={panelRef}
+            className="fixed z-[100] w-80 shadow-2xl bg-card border border-border overflow-hidden rounded-xl animate-in fade-in zoom-in duration-200"
+            style={{
+              top: popoverPosition.top,
+              left: popoverPosition.left,
+            }}
+          >
+            <div className={cn("px-4 py-3 border-b border-border flex items-center justify-between", batchSelected.length > 1 ? "bg-yellow-500/5" : "bg-primary/5")}>
               <div className="flex flex-col">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-widest leading-none mb-1">
                   Token:
                 </span>
                 <span className="font-mono text-sm font-bold text-primary leading-none">
-                  {activeToken?.word}
+                  {activeToken.word}
                 </span>
               </div>
-              {batchEditEnabled && (
+              {batchSelected.length > 1 && (
                 <span className="text-[10px] font-bold uppercase bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded-full">
                   {batchSelected.length} match
                 </span>
               )}
+              <button onClick={closeSuggestionPanel} className="text-muted-foreground hover:text-foreground">
+                <span className="sr-only">Close</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
 
-            <div className="p-3 flex flex-col gap-3 max-h-80 overflow-y-auto">
-              {batchEditEnabled && (
-                <div className="flex flex-col gap-1.5 pb-2 border-b border-border/50">
-                   <p className="text-[9px] font-bold text-yellow-600 uppercase px-1">Manual Edit</p>
-                   <div className="flex gap-2">
-                    <input
-                      autoFocus
-                      type="text"
-                      value={replaceTokenInput}
-                      onChange={(e) => setReplaceTokenInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && applyReplacement(replaceTokenInput)}
-                      className="flex-1 bg-secondary border border-border rounded-lg px-2 py-1.5 font-mono text-xs outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <button
-                      onClick={() => applyReplacement(replaceTokenInput)}
-                      className="bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase hover:bg-primary/90 transition-colors"
-                    >
-                      OK
-                    </button>
-                  </div>
+            <div className="p-3 flex flex-col gap-3 max-h-80 overflow-y-auto scrollbar-thin">
+              {/* Category 4: Replace (Direct Edit) */}
+              <div className="flex flex-col gap-1.5 pb-2 border-b border-border/50">
+                <p className="text-[9px] font-bold text-slate-400 uppercase px-1">Replace</p>
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={replaceTokenInput}
+                    onChange={(e) => setReplaceTokenInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && applyReplacement(replaceTokenInput)}
+                    className="flex-1 bg-secondary border border-border rounded-lg px-2 py-1.5 font-mono text-xs outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Ganti dengan..."
+                  />
+                  <button
+                    onClick={() => applyReplacement(replaceTokenInput)}
+                    className="bg-yellow-400 text-black px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase hover:bg-yellow-500 transition-colors"
+                  >
+                    OK
+                  </button>
                 </div>
-              )}
-              {activeToken && (
-                <>
-                  {/* Algorithm Suggestions grouped by category */}
-                  {Object.entries(
-                    getAlgoSuggestions(activeToken.word).reduce((acc, s) => {
-                      if (!acc[s.category]) acc[s.category] = []
-                      acc[s.category].push(s)
-                      return acc
-                    }, {} as Record<string, any[]>)
-                  ).map(([category, items]) => (
-                    <div key={category} className="flex flex-col gap-1">
-                      <p className="text-[9px] font-bold text-muted-foreground uppercase px-1">{category}</p>
-                      {items.map((s, i) => (
-                        <button
-                          key={i}
-                          onClick={() => applyReplacement(s.text)}
-                          className="w-full text-left px-3 py-1.5 bg-secondary/30 hover:bg-primary/5 rounded font-mono text-xs flex justify-between items-center transition-colors"
-                        >
-                          <span>{s.text}</span>
-                          <span className="text-[9px] text-muted-foreground opacity-70">{s.reason}</span>
-                        </button>
-                      ))}
-                    </div>
+              </div>
+
+              {/* Algorithm Suggestions grouped by category */}
+              {Object.entries(
+                getAlgoSuggestions(activeToken.word).reduce((acc, s) => {
+                  if (!acc[s.category]) acc[s.category] = []
+                  acc[s.category].push(s)
+                  return acc
+                }, {} as Record<string, any[]>)
+              ).map(([category, items]) => (
+                <div key={category} className="flex flex-col gap-1">
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase px-1">{category}</p>
+                  {items.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => applyReplacement(s.text)}
+                      className="w-full text-left px-3 py-1.5 bg-secondary/30 hover:bg-primary/5 rounded font-mono text-xs flex justify-between items-center transition-colors group"
+                    >
+                      <span>{s.text}</span>
+                      <span className="text-[9px] text-muted-foreground opacity-70 group-hover:opacity-100">{s.reason}</span>
+                    </button>
                   ))}
+                </div>
+              ))}
 
-                  {/* AI Suggestions */}
-                  {(isAiLoading || aiSuggestions.length > 0) && (
-                    <div className="flex flex-col gap-1 pt-1 border-t border-border/50">
-                      <p className="text-[9px] font-bold text-purple-600 uppercase px-1">Koreksi AI</p>
-                      {isAiLoading ? (
-                         <div className="py-2 flex justify-center"><div className="w-3 h-3 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" /></div>
-                      ) : (
-                        aiSuggestions.map((s, i) => (
-                          <button
-                            key={i}
-                            onClick={() => applyReplacement(s.text)}
-                            className="w-full text-left px-3 py-1.5 bg-purple-500/5 hover:bg-purple-500/10 rounded font-mono text-xs flex flex-col transition-colors border border-transparent hover:border-purple-500/20"
-                          >
-                            <span className="font-bold text-purple-700 dark:text-purple-400">{s.text}</span>
-                            <span className="text-[9px] text-muted-foreground">{s.reason}</span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
-
-                  {batchEditEnabled && (
-                    <div className="pt-2 border-t border-border/50 flex flex-col gap-2">
-                      <p className="text-[9px] font-bold text-red-500 uppercase px-1">Batch Actions</p>
-                      <button
-                        onClick={() => applyReplacement("")}
-                        className="w-full py-2 bg-red-500/10 text-red-600 rounded-lg text-xs font-bold uppercase hover:bg-red-500/20 transition-colors"
-                      >
-                        Hapus Semua
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
+              {/* Category 5: Delete Token */}
+              <div className="pt-1 mt-1 border-t border-border/50">
+                <button
+                  onClick={() => deleteToken(activeToken)}
+                  className="w-full py-2 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold uppercase hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors flex items-center justify-center gap-2"
+                >
+                  ❌ Hapus kata
+                </button>
+              </div>
             </div>
-          </PopoverContent>
-        </Popover>
-
+          </div>
+        )}
 
         {/* Mobile Bottom Sheet (Vaul) */}
         <Drawer.Root open={showMobileSheet} onOpenChange={setShowMobileSheet}>
@@ -698,6 +776,28 @@ Rules:
 
                   {activeToken && (
                     <>
+                      {/* Mobile Replace */}
+                      <div className="flex flex-col gap-2 p-1">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Replace</p>
+                        <div className="flex gap-3">
+                          <input
+                            type="text"
+                            value={replaceTokenInput}
+                            onChange={(e) => setReplaceTokenInput(e.target.value)}
+                            className="flex-1 bg-secondary border border-border rounded-xl px-4 py-3 font-mono text-sm outline-none focus:ring-1 focus:ring-primary"
+                            placeholder="Ganti dengan..."
+                          />
+                          <button
+                            onClick={() => applyReplacement(replaceTokenInput)}
+                            className="bg-yellow-400 text-black px-6 py-3 rounded-xl text-sm font-bold uppercase"
+                          >
+                            OK
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-border/50" />
+
                       {/* Algorithm Suggestions grouped by category */}
                       {Object.entries(
                         getAlgoSuggestions(activeToken.word).reduce((acc, s) => {
@@ -723,40 +823,15 @@ Rules:
                         </div>
                       ))}
 
-                      {/* AI Suggestions */}
-                      {(isAiLoading || aiSuggestions.length > 0) && (
-                        <div className="flex flex-col gap-2 pt-2 border-t border-border/30">
-                          <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Koreksi AI</p>
-                          {isAiLoading ? (
-                             <div className="py-8 flex justify-center"><div className="w-6 h-6 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" /></div>
-                          ) : (
-                            <div className="grid grid-cols-1 gap-2">
-                              {aiSuggestions.map((s, i) => (
-                                <button
-                                  key={i}
-                                  onClick={() => applyReplacement(s.text)}
-                                  className="w-full text-left px-4 py-3 bg-purple-500/5 active:bg-purple-500/10 rounded-xl font-mono text-sm flex flex-col transition-all border border-purple-500/10"
-                                >
-                                  <span className="font-bold text-purple-700 dark:text-purple-400">{s.text}</span>
-                                  <span className="text-xs text-muted-foreground">{s.reason}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
 
-                      {batchEditEnabled && (
-                        <div className="pt-2 border-t border-border/30 flex flex-col gap-2">
-                           <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider">Batch Actions</p>
-                           <button
-                             onClick={() => applyReplacement("")}
-                             className="w-full py-4 bg-red-500/10 active:bg-red-500/20 text-red-600 rounded-xl font-bold text-sm uppercase transition-all"
-                           >
-                             Hapus Semua
-                           </button>
-                        </div>
-                      )}
+                      <div className="pt-2 border-t border-border/30 flex flex-col gap-2">
+                        <button
+                          onClick={() => deleteToken(activeToken)}
+                          className="w-full py-4 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-xl font-bold text-sm uppercase transition-all"
+                        >
+                          ❌ Hapus kata
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -774,42 +849,6 @@ Rules:
           </Drawer.Portal>
         </Drawer.Root>
 
-        {/* Batch Toolbar Mobile (Visible when tokens are selected) */}
-        {isTouchDevice && batchSelected.length > 0 && (
-           <div className="fixed bottom-0 left-0 right-0 z-[60] bg-card border-t border-border shadow-[0_-10px_40px_rgba(0,0,0,0.1)] flex items-center justify-around px-4 py-4 animate-in slide-in-from-bottom duration-300">
-             <button
-               onClick={() => setPopoverOpen(true)}
-               className="flex flex-col items-center gap-1 text-primary active:scale-90 transition-transform"
-             >
-               <Wand2 className="w-5 h-5" />
-               <span className="text-[10px] font-bold uppercase tracking-tighter">Ganti</span>
-             </button>
-             <button
-               onClick={() => applyReplacement("")}
-               className="flex flex-col items-center gap-1 text-red-500 active:scale-90 transition-transform"
-             >
-               <AlertTriangle className="w-5 h-5" />
-               <span className="text-[10px] font-bold uppercase tracking-tighter">Hapus</span>
-             </button>
-             <button
-               onClick={() => {
-                 navigator.clipboard.writeText(batchSelected.map(idx => input.split(/(\s+)/)[idx]).join(" "))
-                 setBatchSelected([])
-               }}
-               className="flex flex-col items-center gap-1 text-muted-foreground active:scale-90 transition-transform"
-             >
-               <Info className="w-5 h-5" />
-               <span className="text-[10px] font-bold uppercase tracking-tighter">Salin</span>
-             </button>
-             <button
-               onClick={() => setBatchSelected([])}
-               className="flex flex-col items-center gap-1 text-muted-foreground/40 active:scale-90 transition-transform"
-             >
-               <HelpCircle className="w-5 h-5" />
-               <span className="text-[10px] font-bold uppercase tracking-tighter">Batal</span>
-             </button>
-           </div>
-        )}
       </div>
 
       {/* Control Panel */}
@@ -904,8 +943,44 @@ Rules:
                   className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
                 <div className="flex items-center gap-1">
-                  <span className="font-mono text-xs font-bold uppercase">Auto Capital</span>
+                  <span className="font-mono text-xs font-bold uppercase whitespace-nowrap">Auto Capital</span>
                   <HelpIcon>{t("filterAutoCapital")}</HelpIcon>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border cursor-pointer hover:bg-card transition-colors select-none">
+                <input
+                  type="checkbox"
+                  checked={autoLowercase}
+                  onChange={(e) => setAutoLowercase(e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-xs font-bold uppercase whitespace-nowrap">Auto Lower</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border cursor-pointer hover:bg-card transition-colors select-none">
+                <input
+                  type="checkbox"
+                  checked={autoSentence}
+                  onChange={(e) => setAutoSentence(e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-xs font-bold uppercase whitespace-nowrap">Auto Sentence</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border cursor-pointer hover:bg-card transition-colors select-none">
+                <input
+                  type="checkbox"
+                  checked={autoFixSpace}
+                  onChange={(e) => setAutoFixSpace(e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-xs font-bold uppercase whitespace-nowrap">Auto Fix Space</span>
                 </div>
               </label>
 
@@ -917,7 +992,7 @@ Rules:
                   className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
                 <div className="flex items-center gap-1">
-                  <span className="font-mono text-xs font-bold uppercase">Batch Edit</span>
+                  <span className="font-mono text-xs font-bold uppercase whitespace-nowrap">Batch Edit</span>
                   <HelpIcon>
                     Batch Edit
                     {"\n"}Aktifkan untuk mengedit semua kata identik sekaligus.
@@ -968,7 +1043,7 @@ Rules:
         </div>
         <div className="flex items-center gap-2 ml-auto">
           <Sparkles className="w-3 h-3 text-primary" />
-          <span>Algorithmic First · Precision AI</span>
+          <span>100% Deterministic Engine</span>
         </div>
       </div>
     </div>
