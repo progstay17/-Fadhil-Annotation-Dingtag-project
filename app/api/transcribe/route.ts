@@ -41,7 +41,7 @@ Output: Meskipun hujan sangat lebat, kami tetap berangkat ke sekolah. Hari ini s
 type Provider = "groq" | "google"
 
 const MODELS = {
-  groq: "llama-3.3-70b-versatile",
+  groq: "openai/gpt-oss-120b",
   google: "gemini-flash-lite-latest",
 } as const
 

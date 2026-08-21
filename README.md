@@ -208,7 +208,7 @@ Description: Processes text using various AI models and system prompts.
 ```json
 {
   "text": "string",
-  "provider": "google | groq | aiml | openrouter",
+  "provider": "google | groq",
   "systemPrompt": "string"
 }
 ```

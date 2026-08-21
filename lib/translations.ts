@@ -46,10 +46,8 @@ export const translations = {
 
     // Model selector
     modelLabel: "model",
-    modelGroq: "Groq (Llama 3.3)",
+    modelGroq: "Groq (GPT-OSS 120B)",
     modelGoogle: "Google Gemini",
-    modelAiml: "Gemma 3 (AIML API)",
-    modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 
     // Mode
     modeLabel: "Mode Transkripsi",
@@ -151,10 +149,8 @@ export const translations = {
 
     // Model selector
     modelLabel: "model",
-    modelGroq: "Groq (Llama 3.3)",
+    modelGroq: "Groq (GPT-OSS 120B)",
     modelGoogle: "Google Gemini",
-    modelAiml: "Gemma 3 (AIML API)",
-    modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 
     // Mode
     modeLabel: "Transcription Mode",
@@ -256,10 +252,8 @@ export const translations = {
 
     // Model selector
     modelLabel: "模型",
-    modelGroq: "Groq (Llama 3.3)",
+    modelGroq: "Groq (GPT-OSS 120B)",
     modelGoogle: "Google Gemini",
-    modelAiml: "Gemma 3 (AIML API)",
-    modelOpenRouter: "Llama 3.3 (OpenRouter Free)",
 
     // Mode
     modeLabel: "转录模式",
