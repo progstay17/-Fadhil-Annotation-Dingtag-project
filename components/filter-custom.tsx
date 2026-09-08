@@ -15,7 +15,9 @@ import {
   wordsToNumber,
 } from "@/lib/text-utils"
 import { TranslationKey } from "@/lib/translations"
-import { Info, HelpCircle, AlertTriangle, Sparkles, Wand2 } from "lucide-react"
+import { Info, HelpCircle, AlertTriangle, Sparkles, Wand2, Book } from "lucide-react"
+import { protectKnownEntities, restoreKnownEntities } from "@/lib/known-entities"
+import { DictionaryModal } from "./dictionary-modal"
 
 interface FilterCustomProps {
   input: string
@@ -31,6 +33,7 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
   const { t } = useLanguage()
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [showDictionaryModal, setShowDictionaryModal] = useState(false)
 
   // Engine States
   const [findValue, setFindValue] = useState("")
@@ -151,6 +154,10 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
       })
     }
 
+    // 1.5. Protect Known Entities (Dictionary)
+    const { protectedText, entities } = protectKnownEntities(result)
+    result = protectedText
+
     // 2. Add Strip
     if (stripEnabled) {
       // Improved Add Strip: Udah udah -> Udah-udah
@@ -228,6 +235,9 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
           .trim()
       }
     }
+
+    // 9.5. Restore Known Entities
+    result = restoreKnownEntities(result, entities)
 
     return result
   }, [findValue, replaceValue, smartReplaceMode, stripEnabled, removeLineBreak, formatMode, autoCapital, autoSentence, autoLowercase, autoFixSpace])
@@ -313,6 +323,7 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
     if (!info) return false
     const text = info.word || ''
     if (/^\s*$/.test(text)) return false
+    if (/^zzentityz\d+zz$/i.test(text.trim())) return false
     return true
   }, [input])
 
@@ -569,6 +580,7 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
   }, [input, setInput, pushHistory])
 
   const getAlgoSuggestions = useCallback((token: string) => {
+    if (/^zzentityz\d+zz$/i.test(token.trim())) return []
     const { leading, core, trailing } = splitToken(token)
     const suggestions: { category: string, text: string, reason: string }[] = []
 
@@ -625,7 +637,15 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
           </span>
         </div>
         <div className="flex items-center gap-2">
-           <button
+          <button
+            onClick={() => setShowDictionaryModal(true)}
+            className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer flex items-center gap-1"
+            title="Buka Dictionary"
+          >
+            <Book className="w-3 h-3 text-primary" />
+            <span>Dictionary</span>
+          </button>
+          <button
             onClick={handleCopy}
             className="font-mono text-[10px] bg-secondary text-muted-foreground border border-border px-2 py-1 rounded hover:text-foreground hover:border-muted-foreground transition-colors uppercase tracking-tighter font-bold cursor-pointer"
           >
@@ -1056,6 +1076,9 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
            </div>
         </div>
       </div>
+
+      {/* Dictionary Modal */}
+      <DictionaryModal open={showDictionaryModal} onOpenChange={setShowDictionaryModal} />
 
       {/* Shortcuts Hint */}
       <div className="flex flex-wrap items-center gap-6 text-[10px] text-muted-foreground font-mono uppercase tracking-[0.2em] px-1 opacity-60">
