@@ -188,20 +188,6 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
 
     // 5. Smart Replace (Placeholder for existing UI consistency if needed, though Find/Replace is already there)
 
-    // 6. Auto Capital After .!? (if ON)
-    if (autoCapital) {
-      result = applyFormatWithProtection(result, (t) => {
-        return t.replace(/(^|[.!?]\s+)([a-z])/g, (_, punct, char) =>
-          punct + char.toUpperCase()
-        )
-      })
-    }
-
-    // 7. Auto Sentence Case (if ON)
-    if (autoSentence) {
-      result = applySentenceCase(result)
-    }
-
     // 8. Auto Lowercase (if ON)
     if (autoLowercase) {
       if (autoSentence) {
@@ -217,6 +203,20 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
         protectedText = protectedText.replace(/\b[A-Z][a-z]*\b/g, w => w.toLowerCase())
         result = protectedText.replace(/__ACR(\d+)__/g, (_, i) => acronyms[parseInt(i)])
       }
+    }
+
+    // 6. Auto Capital After .!? (if ON)
+    if (autoCapital) {
+      result = applyFormatWithProtection(result, (t) => {
+        return t.replace(/(^|[.!?]\s+|\n+\s*)([a-z])/g, (_, punct, char) =>
+          punct + char.toUpperCase()
+        )
+      })
+    }
+
+    // 7. Auto Sentence Case (if ON)
+    if (autoSentence) {
+      result = applySentenceCase(result)
     }
 
     // 9. Auto Fix Space (ALWAYS LAST)
