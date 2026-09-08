@@ -112,7 +112,7 @@ function runTests() {
 
   // Test 2: Format Huruf UPPERCASE with dictionary entry shopee -> Shopee
   const out2 = simulateRunEngine("saya beli di shopee", { formatMode: "upper" })
-  assert(out2 === "SAYA BELI DI Shopee", `Test 2 failed! Got: "${out2}"`)
+  assert(out2 === "SAYA BELI DI SHOPEE", `Test 2 failed! Got: "${out2}"`)
   console.log("✓ Test 2 passed (Format Huruf UPPERCASE preserve canonical)")
 
   // Test 3: Substring overlap in dictionary (shop -> Shop vs shopee -> Shopee)

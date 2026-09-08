@@ -60,7 +60,18 @@ export function protectKnownEntities(text: string): { protectedText: string; ent
 }
 
 export function restoreKnownEntities(text: string, entities: string[]): string {
-  return text.replace(/zzentityz(\d+)zz/gi, (_, i) => entities[parseInt(i)] || "")
+  return text.replace(/zzentityz(\d+)zz/gi, (match, iStr) => {
+    const entity = entities[parseInt(iStr)]
+    if (!entity) return ""
+
+    if (match === match.toUpperCase()) {
+      return entity.toUpperCase()
+    }
+    if (match[0] === match[0].toUpperCase()) {
+      return entity[0].toUpperCase() + entity.slice(1)
+    }
+    return entity
+  })
 }
 
 export function exportKnownEntities(): void {

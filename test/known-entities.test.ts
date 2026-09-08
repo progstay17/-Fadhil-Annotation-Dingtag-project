@@ -53,7 +53,7 @@ function runTests() {
   const upper3 = p3.toUpperCase()
   assert(upper3.includes("ZZENTITYZ0ZZ"), `Expected upper3 to contain ZZENTITYZ0ZZ, got ${upper3}`)
   const r3 = restoreKnownEntities(upper3, e3)
-  assert(r3 === "SAYA SUKA Shopee SEKALI", `Expected restored r3, got ${r3}`)
+  assert(r3 === "SAYA SUKA SHOPEE SEKALI", `Expected restored r3, got ${r3}`)
   console.log("✓ Test 3 passed (Uppercase transformation)")
 
   // Test 4: Capitalize Each Word
