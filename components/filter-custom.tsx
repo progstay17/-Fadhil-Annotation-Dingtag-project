@@ -169,11 +169,6 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
       })
     }
 
-    // 3. Remove Line Break
-    if (removeLineBreak) {
-      result = result.replace(/\n+/g, ' ')
-    }
-
     // 4. Format Huruf
     if (formatMode !== "none") {
       result = applyFormatWithProtection(result, (t) => {
@@ -217,6 +212,11 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
     // 7. Auto Sentence Case (if ON)
     if (autoSentence) {
       result = applySentenceCase(result)
+    }
+
+    // 3. Remove Line Break
+    if (removeLineBreak) {
+      result = result.replace(/\n+/g, ' ')
     }
 
     // 9. Auto Fix Space (ALWAYS LAST)

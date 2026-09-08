@@ -3,7 +3,7 @@ import {
   applySentenceCase,
   formatPreservingReplace
 } from "../lib/text-utils"
-import { protectKnownEntities, restoreKnownEntities } from "../lib/known-entities"
+import { protectKnownEntities, restoreKnownEntities, KnownEntity } from "../lib/known-entities"
 
 // Helper asserting condition
 function assertEqual(actual: string, expected: string, testName: string) {
@@ -26,8 +26,28 @@ interface RunEngineOptions {
   autoFixSpace?: boolean
 }
 
+// Helper to simulate known entities without window/localStorage
+function protectKnownEntitiesMock(text: string, mockEntities: KnownEntity[]): { protectedText: string; entities: string[] } {
+  if (mockEntities.length === 0) return { protectedText: text, entities: [] }
+
+  const sorted = [...mockEntities].sort((a, b) => b.key.length - a.key.length)
+  const restoreList: string[] = []
+  let protectedText = text
+
+  sorted.forEach(({ key, canonical }) => {
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(`\\b${escapedKey}\\b`, "gi")
+    protectedText = protectedText.replace(regex, () => {
+      restoreList.push(canonical)
+      return `zzentityz${restoreList.length - 1}zz`
+    })
+  })
+
+  return { protectedText, entities: restoreList }
+}
+
 // Simulated runEngine matching components/filter-custom.tsx
-function runEngine(text: string, options: RunEngineOptions = {}): string {
+function runEngine(text: string, options: RunEngineOptions = {}, mockEntities: KnownEntity[] = []): string {
   const {
     findValue = "",
     replaceValue = "",
@@ -60,7 +80,9 @@ function runEngine(text: string, options: RunEngineOptions = {}): string {
   }
 
   // 1.5. Protect Known Entities (Dictionary)
-  const { protectedText, entities } = protectKnownEntities(result)
+  const { protectedText, entities } = mockEntities.length > 0
+    ? protectKnownEntitiesMock(result, mockEntities)
+    : protectKnownEntities(result)
   result = protectedText
 
   // 2. Add Strip
@@ -69,11 +91,6 @@ function runEngine(text: string, options: RunEngineOptions = {}): string {
       const words = match.split(/\s+/)
       return words[0] + '-' + words[1].toLowerCase()
     })
-  }
-
-  // 3. Remove Line Break
-  if (removeLineBreak) {
-    result = result.replace(/\n+/g, ' ')
   }
 
   // 4. Format Huruf
@@ -119,6 +136,11 @@ function runEngine(text: string, options: RunEngineOptions = {}): string {
     result = applySentenceCase(result)
   }
 
+  // 3. Remove Line Break
+  if (removeLineBreak) {
+    result = result.replace(/\n+/g, ' ')
+  }
+
   // 9. Auto Fix Space
   if (autoFixSpace) {
     result = result
@@ -159,6 +181,24 @@ function runAutoCapitalTests() {
   // 6. Toggle autoCapital OFF. Input multi-line -> unchanged
   const res6 = runEngine("baju itu bagus\nsperai itu juga bagus\nselimut juga oke", { autoCapital: false })
   assertEqual(res6, "baju itu bagus\nsperai itu juga bagus\nselimut juga oke", "Test 6: Auto Capital OFF (no-op)")
+
+  // 7. Toggle autoCapital ON + removeLineBreak ON
+  const input7 = "sprei putih kotor\naku ambil bantal\nbagian bawah kasur"
+  const res7 = runEngine(input7, { autoCapital: true, removeLineBreak: true })
+  assertEqual(res7, "Sprei putih kotor Aku ambil bantal Bagian bawah kasur", "Test 7: autoCapital ON + removeLineBreak ON")
+
+  // 8. Toggle autoCapital ON + removeLineBreak OFF
+  const res8 = runEngine(input7, { autoCapital: true, removeLineBreak: false })
+  assertEqual(res8, "Sprei putih kotor\nAku ambil bantal\nBagian bawah kasur", "Test 8: autoCapital ON + removeLineBreak OFF")
+
+  // 9. Toggle autoCapital OFF + removeLineBreak ON
+  const res9 = runEngine(input7, { autoCapital: false, removeLineBreak: true })
+  assertEqual(res9, "sprei putih kotor aku ambil bantal bagian bawah kasur", "Test 9: autoCapital OFF + removeLineBreak ON")
+
+  // 10. Dictionary combination: entry 'sprei' -> 'seprai' + autoCapital ON + removeLineBreak ON
+  const input10 = "sprei putih kotor\naku ambil bantal"
+  const res10 = runEngine(input10, { autoCapital: true, removeLineBreak: true }, [{ key: "sprei", canonical: "seprai" }])
+  assertEqual(res10, "Seprai putih kotor Aku ambil bantal", "Test 10: Dictionary + autoCapital ON + removeLineBreak ON")
 
   console.log("All Auto Capital tests passed successfully!")
 }
