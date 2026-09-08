@@ -52,7 +52,7 @@ export function protectKnownEntities(text: string): { protectedText: string; ent
     const regex = new RegExp(`\\b${escapedKey}\\b`, "gi")
     protectedText = protectedText.replace(regex, () => {
       restoreList.push(canonical)
-      return `__ENTITY_${restoreList.length - 1}__`
+      return `zzentityz${restoreList.length - 1}zz`
     })
   })
 
@@ -60,7 +60,7 @@ export function protectKnownEntities(text: string): { protectedText: string; ent
 }
 
 export function restoreKnownEntities(text: string, entities: string[]): string {
-  return text.replace(/__ENTITY_(\d+)__/g, (_, i) => entities[parseInt(i)] || "")
+  return text.replace(/zzentityz(\d+)zz/gi, (_, i) => entities[parseInt(i)] || "")
 }
 
 export function exportKnownEntities(): void {
