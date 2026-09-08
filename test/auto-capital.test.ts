@@ -8,7 +8,7 @@ import { protectKnownEntities, restoreKnownEntities } from "../lib/known-entitie
 // Helper asserting condition
 function assertEqual(actual: string, expected: string, testName: string) {
   if (actual !== expected) {
-    throw new Error(`[FAIL] ${testName}: Expected "${expected}", got "${actual}"`)
+    throw new Error(`[FAIL] ${testName}:\n  Expected: ${JSON.stringify(expected)}\n  Got:      ${JSON.stringify(actual)}`)
   }
   console.log(`✓ [PASS] ${testName}`)
 }
@@ -88,20 +88,6 @@ function runEngine(text: string, options: RunEngineOptions = {}): string {
     })
   }
 
-  // 6. Auto Capital After .!? (if ON) - Exact code from components/filter-custom.tsx
-  if (autoCapital) {
-    result = applyFormatWithProtection(result, (t) => {
-      return t.replace(/(^|[.!?]\s+)([a-z])/g, (_, punct, char) =>
-        punct + char.toUpperCase()
-      )
-    })
-  }
-
-  // 7. Auto Sentence Case (if ON)
-  if (autoSentence) {
-    result = applySentenceCase(result)
-  }
-
   // 8. Auto Lowercase (if ON)
   if (autoLowercase) {
     if (autoSentence) {
@@ -117,6 +103,20 @@ function runEngine(text: string, options: RunEngineOptions = {}): string {
       protectedText = protectedText.replace(/\b[A-Z][a-z]*\b/g, w => w.toLowerCase())
       result = protectedText.replace(/__ACR(\d+)__/g, (_, i) => acronyms[parseInt(i)])
     }
+  }
+
+  // 6. Auto Capital After .!? (if ON) - Exact code from components/filter-custom.tsx
+  if (autoCapital) {
+    result = applyFormatWithProtection(result, (t) => {
+      return t.replace(/(^|[.!?]\s+|\n+\s*)([a-z])/g, (_, punct, char) =>
+        punct + char.toUpperCase()
+      )
+    })
+  }
+
+  // 7. Auto Sentence Case (if ON)
+  if (autoSentence) {
+    result = applySentenceCase(result)
   }
 
   // 9. Auto Fix Space
@@ -140,17 +140,25 @@ function runAutoCapitalTests() {
   const res1 = runEngine("sprei itu bagus.", { autoCapital: true })
   assertEqual(res1, "Sprei itu bagus.", "Test 1: Auto Capital ON (start of string)")
 
-  // 2. Toggle autoCapital ON. Input: "sprei itu bagus. beli di toko." (dua kalimat)
+  // 2. Toggle autoCapital ON. Input: "sprei itu bagus. beli di toko." (dua kalimat dipisah titik)
   const res2 = runEngine("sprei itu bagus. beli di toko.", { autoCapital: true })
-  assertEqual(res2, "Sprei itu bagus. Beli di toko.", "Test 2: Auto Capital ON (multi-sentence)")
+  assertEqual(res2, "Sprei itu bagus. Beli di toko.", "Test 2: Auto Capital ON (multi-sentence with period)")
 
-  // 3. Toggle autoCapital OFF. Input: "sprei itu bagus."
-  const res3 = runEngine("sprei itu bagus.", { autoCapital: false })
-  assertEqual(res3, "sprei itu bagus.", "Test 3: Auto Capital OFF (no-op)")
+  // 3. Toggle autoCapital ON. Input: multi-line separated by newline without punctuation
+  const res3 = runEngine("baju itu bagus\nsperai itu juga bagus\nselimut juga oke", { autoCapital: true })
+  assertEqual(res3, "Baju itu bagus\nSperai itu juga bagus\nSelimut juga oke", "Test 3: Auto Capital ON (newline separated)")
 
-  // 4. Toggle autoCapital ON + Acronym protection check.
-  const res4 = runEngine("qris itu praktis, saya suka QRIS juga.", { autoCapital: true })
-  assertEqual(res4, "Qris itu praktis, saya suka QRIS juga.", "Test 4: Auto Capital ON (Acronym QRIS preserved, qris capitalized)")
+  // 4. Toggle autoCapital ON. Input mixed period and newline
+  const res4 = runEngine("kalimat satu. kalimat dua\nkalimat tiga! kalimat empat", { autoCapital: true })
+  assertEqual(res4, "Kalimat satu. Kalimat dua\nKalimat tiga! Kalimat empat", "Test 4: Auto Capital ON (mixed punctuation and newline)")
+
+  // 5. Toggle autoCapital ON + autoLowercase ON (autoSentence false). Input: "baju bagus\nQRIS itu praktis"
+  const res5 = runEngine("baju bagus\nQRIS itu praktis", { autoCapital: true, autoLowercase: true, autoSentence: false })
+  assertEqual(res5, "Baju bagus\nQRIS itu praktis", "Test 5: Auto Capital ON + Auto Lowercase ON (acronym QRIS preserved)")
+
+  // 6. Toggle autoCapital OFF. Input multi-line -> unchanged
+  const res6 = runEngine("baju itu bagus\nsperai itu juga bagus\nselimut juga oke", { autoCapital: false })
+  assertEqual(res6, "baju itu bagus\nsperai itu juga bagus\nselimut juga oke", "Test 6: Auto Capital OFF (no-op)")
 
   console.log("All Auto Capital tests passed successfully!")
 }
