@@ -118,7 +118,7 @@ export function applySentenceCase(text: string): string {
 
   // Step 3: capitalize after sentence-ending punctuation
   protectedText = protectedText.replace(
-    /(^|[.!?]\s+)([a-z])/g,
+    /(^|[.!?]\s+|\n+\s*)([a-z])/g,
     (_, prefix, char) => prefix + char.toUpperCase()
   )
 
