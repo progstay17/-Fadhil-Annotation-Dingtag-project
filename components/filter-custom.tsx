@@ -191,7 +191,7 @@ export function FilterCustom({ input, setInput, onClear }: FilterCustomProps) {
     // 6. Auto Capital After .!? (if ON)
     if (autoCapital) {
       result = applyFormatWithProtection(result, (t) => {
-        return t.replace(/([.!?]\s+)([a-z])/g, (_, punct, char) =>
+        return t.replace(/(^|[.!?]\s+)([a-z])/g, (_, punct, char) =>
           punct + char.toUpperCase()
         )
       })
